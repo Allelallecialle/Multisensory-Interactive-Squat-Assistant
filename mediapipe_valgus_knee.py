@@ -64,6 +64,28 @@ def check_knee_valgus(landmarks, w, h, threshold=0.90):
 
     return valgus_ratio < threshold
 
+# ---- Functions to check if the barbell is used in an unbalanced way --------
+# checks the height difference between the wrists
+def barbell_unbalanced(landmarks, w, h, height_tolerance=0.03):
+    LW, RW = 15, 16
+
+    left_y = landmarks[LW].y
+    right_y = landmarks[RW].y
+
+    return abs(left_y - right_y) > height_tolerance
+
+def barbell_bad_form(landmarks, w, h):
+    # if not is_squatting(landmarks, w, h):
+    #     return False  # ignore when standing
+
+    bad_form = False
+    unbalanced = barbell_unbalanced(landmarks, w, h)
+    if unbalanced:
+        bad_form = True
+
+    return bad_form
+
+
 #---- Video loop ------------------------------------
 # external camera. Set 0 for webcam
 cam= cv2.VideoCapture(2)
@@ -128,8 +150,12 @@ while cam.isOpened():
             cv2.putText(frame, "KNEE VALGUS", (30, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
         if rep_success:
-            cv2.putText(frame, "REP OK", (30, 80),
+            cv2.putText(frame, "REP OK", (30, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+
+        if barbell_bad_form(landmarks, w, h):
+            cv2.putText(frame, "BARBELL OUT OF BALANCE", (30, 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
 
     cv2.imshow("Squat Pose Monitor", frame)
 
