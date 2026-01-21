@@ -8,10 +8,7 @@ from mediapipe.tasks.python import vision
 from mediapipe_pose_utils import draw_landmarks_on_image
 import threading
 
-# ==========================
-# Arduino serial setup
-# ==========================
-# Change port if needed (e.g. COM3 on Windows)
+
 SERIAL_PORT = "/dev/ttyACM0"
 BAUDRATE = 9600
 #
@@ -44,17 +41,11 @@ options = vision.PoseLandmarkerOptions(
 
 landmarker = vision.PoseLandmarker.create_from_options(options)
 
-
-# ==========================
-# Helper functions
-# ==========================
-# ==========================
-
 def lm_xy(lm, w, h):
     return np.array([lm.x * w, lm.y * h])
 
-def check_knee_valgus(landmarks, w, h, threshold=0.85):
-    LK, RK, LA, RA = 25, 26, 27, 28  # Mediapipe indices
+def check_knee_valgus(landmarks, w, h, threshold=0.90):
+    LK, RK, LA, RA = 25, 26, 27, 28  # mediapipe indices
 
     left_knee = lm_xy(landmarks[LK], w, h)
     right_knee = lm_xy(landmarks[RK], w, h)
@@ -66,13 +57,16 @@ def check_knee_valgus(landmarks, w, h, threshold=0.85):
 
     if ankle_dist == 0:
         return False
+    # if not is_squatting:
+    #     return False
 
-    return knee_dist < ankle_dist * threshold
+    valgus_ratio = knee_dist / ankle_dist
 
-# ==========================
-# Video loop
-# ==========================
-cam= cv2.VideoCapture(0)
+    return valgus_ratio < threshold
+
+#---- Video loop ------------------------------------
+# external camera. Set 0 for webcam
+cam= cv2.VideoCapture(2)
 rep_success = False
 timestamp = 0
 
@@ -110,12 +104,11 @@ while cam.isOpened():
         valgus = check_knee_valgus(landmarks, w, h)
 
         # Color logic
+        color = None
         if rep_success:
             color = (0, 255, 0)
         elif valgus:
             color = (0, 0, 255)
-        else:
-            color = (0, 255, 255)
 
 
         annotated = draw_landmarks_on_image(
@@ -123,7 +116,7 @@ while cam.isOpened():
             result
         )
         # Apply color overlay logic
-        if color != (0, 255, 255):  # yellow = default
+        if color == (0, 0, 255) or color == (0, 255, 0):  # yellow = default
             overlay = annotated.copy()
             overlay[:] = color
             annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
