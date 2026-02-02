@@ -11,14 +11,30 @@ import threading
 
 SERIAL_PORT = "/dev/ttyACM0"
 BAUDRATE = 9600
-#
-# try:
-#     arduino = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=0.01)
-#     time.sleep(2)
-#     print("Arduino connected")
-# except:
-#     arduino = None
-#     print("Arduino NOT connected")
+
+try:
+    arduino = serial.Serial(SERIAL_PORT, BAUDRATE, timeout=0.01)
+    time.sleep(2)
+    print("Arduino connected")
+except:
+    arduino = None
+    print("Arduino NOT connected")
+
+
+is_squatting = False
+
+def serial_listener(port="/dev/ttyACM0", baud=115200):
+    global is_squatting
+    ser = serial.Serial(port, baud, timeout=1)
+
+    while True:
+        line = ser.readline().decode().strip()
+        print(line)
+        if line == "SQUAT_STATE:1":
+            is_squatting = True
+        elif line == "SQUAT_STATE:0":
+            is_squatting = False
+
 
 latest_result = None
 result_lock = threading.Lock()
@@ -57,8 +73,8 @@ def check_knee_valgus(landmarks, w, h, threshold=0.90):
 
     if ankle_dist == 0:
         return False
-    # if not is_squatting:
-    #     return False
+    if not is_squatting:
+        return False
 
     valgus_ratio = knee_dist / ankle_dist
 
@@ -75,8 +91,8 @@ def barbell_unbalanced(landmarks, w, h, height_tolerance=0.03):
     return abs(left_y - right_y) > height_tolerance
 
 def barbell_bad_form(landmarks, w, h):
-    # if not is_squatting(landmarks, w, h):
-    #     return False  # ignore when standing
+    if not is_squatting:
+        return False  # ignore when standing
 
     bad_form = False
     unbalanced = barbell_unbalanced(landmarks, w, h)
@@ -87,10 +103,13 @@ def barbell_bad_form(landmarks, w, h):
 
 
 #---- Video loop ------------------------------------
-# external camera. Set 0 for webcam
+# external camera. Set 0 for webcam, 2 for external camera
 cam= cv2.VideoCapture(2)
 rep_success = False
 timestamp = 0
+
+#thread to run for arduino communication
+threading.Thread(target=serial_listener, daemon=True).start()
 
 while cam.isOpened():
     ret, frame = cam.read()
