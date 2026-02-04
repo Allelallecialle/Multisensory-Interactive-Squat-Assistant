@@ -7,6 +7,7 @@ double b_lp_10Hz[] = {0.000416599204407, 0.001666396817626, 0.002499595226440, 0
 
 IIRFilter lp_analog_input0(b_lp_10Hz, a_lp_10Hz);
 
+
 void receive_message(boolean new_message_received, char* received_message) {
   
     static boolean reception_in_progress = false;
@@ -43,6 +44,7 @@ void receive_message(boolean new_message_received, char* received_message) {
     }
 }
 
+
 void handle_received_message(char *received_message) {
     
     char *all_tokens[2] = {NULL, NULL};
@@ -62,6 +64,8 @@ void handle_received_message(char *received_message) {
         analogWrite(digital_output3_pin, atoi(value));
     }
 }
+
+
 
 void analog_digital_loop() {
     //Loop for the analog and digital sensors
