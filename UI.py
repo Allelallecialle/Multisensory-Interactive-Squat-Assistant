@@ -49,7 +49,10 @@ class SquatUI(QMainWindow):
         self.reset_btn = QPushButton("Reset pose")
         self.quit_btn = QPushButton("Quit")
         self.confirm_reps_btn = QPushButton("Confirm repetitions")
-        self.set_configured = False
+        self.status = self.statusBar()
+        self.status.setFixedHeight(28)  # small bottom box to show UI messages
+        self.status.showMessage("Ready")
+
         self.repetitions_to_achieve = 0
         self.squat_counter = 0
 
@@ -92,22 +95,14 @@ class SquatUI(QMainWindow):
     def save_pose(self):
         print("Pose saved (hook logic here)")
         # UI feedback
-        self.statusBar().showMessage(
-            "Pose saved"
-        )
-
-#TODO: aggiungi sezione specifica per UI feedback messages che non sposti tutta la UI al click
-#TODO: dai UI feedback corretto con numero ripetizioni e non {n}
-#TODO: fai sparire questi messaggi dopo 2 secondi tranne counter di squat
+        self.statusBar().showMessage("Pose saved", 2000)
 
     def reset_pose(self):
         global rep_success
         rep_success = False
         print("Pose reset")
         # UI feedback
-        self.statusBar().showMessage(
-            "Pose reset"
-        )
+        self.statusBar().showMessage("Pose reset", 2000)
 
     def confirm_repetitions(self):
         n = self.reps_spin.value()
@@ -123,9 +118,7 @@ class SquatUI(QMainWindow):
         #     self.arduino.write(f"[REPS,{n}]".encode())
 
         # UI feedback
-        self.statusBar().showMessage(
-            "Set configured: {n} reps"
-        )
+        self.statusBar().showMessage(f"Set configured: {n} reps", 2000)
 
     def quit_set(self):
         print("SET INTERRUPTED.")
@@ -138,9 +131,7 @@ class SquatUI(QMainWindow):
         #     self.arduino.write(b"[QUIT,1]")
 
         # UI feedback
-        self.statusBar().showMessage(
-            "Set interrupted. Choose repetitions for next set."
-        )
+        self.statusBar().showMessage("Set interrupted. Choose repetitions for next set.")
 
     # ----------------- Video loop -----------------
     def update_frame(self):
