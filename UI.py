@@ -3,24 +3,25 @@ from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
     QMainWindow, QWidget,
     QLabel, QPushButton, QSpinBox,
-    QVBoxLayout, QHBoxLayout, QSizePolicy)
+    QVBoxLayout, QHBoxLayout, QSizePolicy, QApplication)
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe_knees import *
 import cv2
 from mediapipe_pose_utils import draw_landmarks_on_image
+from serial_communication import SerialController
 
 
 # ----------------- Qt Main Window -----------------
 class SquatUI(QMainWindow):
-    def __init__(self):
+    def __init__(self, arduino):
         super().__init__()
         self.setWindowTitle("Multisensory Interactive Squat System")
         self.resize(1200, 800)
 
         self.timestamp = 0
-
+        self.arduino = arduino
         # ---- Camera ----
         self.cam = cv2.VideoCapture(0)
 
@@ -89,17 +90,31 @@ class SquatUI(QMainWindow):
         # ---- Timer ----
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
-        self.timer.start(30)  # ~30 FPS
+        self.timer.start(30)
+
+    # ---- Stop UI ----
+    def closeEvent(self, event):
+        print("Closing UI...")
+        self.timer.stop()
+
+        if self.cam.isOpened():
+            self.cam.release()
+
+        self.arduino.close()  # stop thread and close serial communication
+        QApplication.quit()
+        event.accept()
 
     # ----------------- Actions -----------------
     def save_pose(self):
-        print("Pose saved (hook logic here)")
+        self.arduino.save_pose()
+        print("Pose saved")
         # UI feedback
         self.statusBar().showMessage("Pose saved", 2000)
 
     def reset_pose(self):
         global rep_success
         rep_success = False
+        self.arduino.reset_pose()
         print("Pose reset")
         # UI feedback
         self.statusBar().showMessage("Pose reset", 2000)
@@ -111,24 +126,17 @@ class SquatUI(QMainWindow):
         self.squat_counter = 0
         self.set_configured = True
 
+        self.arduino.set_reps(n)
         print(f"Set configured: {n} reps")
-
-        # send to Arduino (example to CHANGE)
-        # if self.arduino:
-        #     self.arduino.write(f"[REPS,{n}]".encode())
-
         # UI feedback
         self.statusBar().showMessage(f"Set configured: {n} reps", 2000)
 
     def quit_set(self):
+        self.arduino.quit_set()
         print("SET INTERRUPTED.")
 
         self.set_configured = False
         self.squat_counter = 0
-
-        # inform Arduino (example to CHANGE)
-        # if self.arduino:
-        #     self.arduino.write(b"[QUIT,1]")
 
         # UI feedback
         self.statusBar().showMessage("Set interrupted. Choose repetitions for next set.")
@@ -151,27 +159,34 @@ class SquatUI(QMainWindow):
 
         with result_lock:
             result = latest_result
+        if result is None:
+            self.display_frame(frame)
+            return
 
         if result and result.pose_landmarks:
             landmarks = result.pose_landmarks[0]
-            valgus = check_knee_valgus(landmarks, w, h)
-
             annotated = draw_landmarks_on_image(frame.copy(), result)
 
-            if valgus:
-                overlay = annotated.copy()
-                overlay[:] = (0, 0, 255)
-                annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
-                cv2.putText(
-                    annotated, "KNEE VALGUS", (30, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                )
+            #check valgus knees only if the arduino sends that the user is actually squatting
+            if SerialController.is_squatting:
+                valgus = check_knee_valgus(landmarks, w, h)
+                if valgus:
+                    overlay = annotated.copy()
+                    overlay[:] = (0, 0, 255)
+                    annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
+                    cv2.putText(
+                        annotated, "KNEE VALGUS", (30, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                    )
 
-            if barbell_bad_form(landmarks, w, h):
+            unbalanced_wrists = barbell_bad_form(landmarks, w, h)
+            if unbalanced_wrists:
                 cv2.putText(
                     annotated, "BARBELL OUT OF BALANCE", (30, 80),
                     cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
                 )
+            #send serial boolean for barbell balance: 1 if unbalanced, 0 balanced
+            self.arduino.send_wrist_unbalanced(unbalanced_wrists)
 
             frame = annotated
 

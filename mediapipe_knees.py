@@ -1,5 +1,4 @@
 import numpy as np
-
 import threading
 
 is_squatting = False
