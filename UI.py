@@ -1,3 +1,4 @@
+import time
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
@@ -9,8 +10,47 @@ from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
 from mediapipe_knees import *
 import cv2
+import threading
 from mediapipe_pose_utils import draw_landmarks_on_image
-from serial_communication import SerialController
+
+
+# ----------------- MediaPipe callback -----------------
+result_lock = threading.Lock()
+def pose_callback(result, output_image, timestamp_ms):
+    global latest_result
+    with result_lock:
+        latest_result = result
+
+# ----------------- Mediapipe squat functions -----------------
+latest_result = None
+def lm_xy(lm, w, h):
+    return np.array([lm.x * w, lm.y * h])
+
+
+def check_knee_valgus(landmarks, w, h, threshold=0.90):
+    # if not is_squatting:
+    #     return False
+
+    LK, RK, LA, RA = 25, 26, 27, 28
+    left_knee = lm_xy(landmarks[LK], w, h)
+    right_knee = lm_xy(landmarks[RK], w, h)
+    left_ankle = lm_xy(landmarks[LA], w, h)
+    right_ankle = lm_xy(landmarks[RA], w, h)
+
+    ankle_dist = abs(left_ankle[0] - right_ankle[0])
+    if ankle_dist == 0:
+        return False
+
+    knee_dist = abs(left_knee[0] - right_knee[0])
+    return (knee_dist / ankle_dist) < threshold
+
+
+def barbell_bad_form(landmarks):
+    # if not is_squatting:
+    #     return False
+
+    LW, RW = 15, 16
+    return abs(landmarks[LW].y - landmarks[RW].y) > 0.03
 
 
 # ----------------- Qt Main Window -----------------
@@ -154,8 +194,10 @@ class SquatUI(QMainWindow):
             image_format=mp.ImageFormat.SRGB,
             data=frame
         )
-        self.landmarker.detect_async(mp_image, self.timestamp)
-        self.timestamp += 33
+        #self.landmarker.detect_async(mp_image, self.timestamp)
+        #self.timestamp += 33
+        timestamp_ms = int(time.time() * 1000)
+        self.landmarker.detect_async(mp_image, timestamp_ms)
 
         with result_lock:
             result = latest_result
@@ -168,7 +210,8 @@ class SquatUI(QMainWindow):
             annotated = draw_landmarks_on_image(frame.copy(), result)
 
             #check valgus knees only if the arduino sends that the user is actually squatting
-            if SerialController.is_squatting:
+            if self.arduino.is_squatting:
+                print("squatting")
                 valgus = check_knee_valgus(landmarks, w, h)
                 if valgus:
                     overlay = annotated.copy()
@@ -179,14 +222,14 @@ class SquatUI(QMainWindow):
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
                     )
 
-            unbalanced_wrists = barbell_bad_form(landmarks, w, h)
-            if unbalanced_wrists:
-                cv2.putText(
-                    annotated, "BARBELL OUT OF BALANCE", (30, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                )
-            #send serial boolean for barbell balance: 1 if unbalanced, 0 balanced
-            self.arduino.send_wrist_unbalanced(unbalanced_wrists)
+                unbalanced_wrists = barbell_bad_form(landmarks)
+                if unbalanced_wrists:
+                    cv2.putText(
+                        annotated, "BARBELL OUT OF BALANCE", (30, 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                    )
+                #send serial boolean for barbell balance: 1 if unbalanced, 0 balanced
+                self.arduino.send_wrist_unbalanced(unbalanced_wrists)
 
             frame = annotated
 

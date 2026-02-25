@@ -1,18 +1,35 @@
+import queue
+
 import serial
 import threading
 
 #Python controller that sends to arduino: [RESET], [SET_N_REPS], [SAVE_POSE], [QUIT], [WRIST_UNBALANCED]
-#Viceversa python receives: SQUATSTATE (i.e. is_squatting bool to know when to check valgus knees),
-# pressure values to draw on UI, current number of repetitions
+#Viceversa python receives: SQUATSTATE (i.e. is_squatting bool to know when to check valgus knees), REP_OK,
+# pressure values to draw on UI, current number of repetitions SET_OK
 class SerialController:
     def __init__(self, port="/dev/ttyACM0", baud=115200):
         self.ser = serial.Serial(port, baud, timeout=0.1)
         self.running = True
 
         self.is_squatting = False
+        self.write_queue = queue.Queue()
 
-        self.thread = threading.Thread(target=self.read_loop, daemon=True)
-        self.thread.start()
+        self.read_thread = threading.Thread(target=self.read_loop, daemon=True)
+        self.write_thread = threading.Thread(target=self.write_loop, daemon=True)
+
+        self.read_thread.start()
+        self.write_thread.start()
+
+    # ----------------- Write to arduino -----------------
+    def write_loop(self):
+        while self.running:
+            try:
+                msg = self.write_queue.get(timeout=0.1)
+                self.ser.write((msg + "\n").encode())
+            except queue.Empty:
+                continue
+            except Exception as e:
+                print("Serial write error:", e)
 
     # ----------------- Read from arduino -----------------
     def read_loop(self):
@@ -41,7 +58,7 @@ class SerialController:
 
     # ----------------- Send to arduino -----------------
     def send(self, msg):
-        self.ser.write((msg + "\n").encode())
+        self.write_queue.put(msg)
 
     def reset_pose(self):
         self.send("RESET")
