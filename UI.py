@@ -1,4 +1,5 @@
 import time
+import numpy as np
 from PySide6.QtCore import QTimer, Qt
 from PySide6.QtGui import QImage, QPixmap
 from PySide6.QtWidgets import (
@@ -8,7 +9,6 @@ from PySide6.QtWidgets import (
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
-from mediapipe_knees import *
 import cv2
 import threading
 from mediapipe_pose_utils import draw_landmarks_on_image
@@ -211,7 +211,7 @@ class SquatUI(QMainWindow):
 
             #check valgus knees only if the arduino sends that the user is actually squatting
             if self.arduino.is_squatting:
-                print("squatting")
+                #print("squatting")
                 valgus = check_knee_valgus(landmarks, w, h)
                 if valgus:
                     overlay = annotated.copy()
@@ -230,6 +230,8 @@ class SquatUI(QMainWindow):
                     )
                 #send serial boolean for barbell balance: 1 if unbalanced, 0 balanced
                 self.arduino.send_wrist_unbalanced(unbalanced_wrists)
+                # send serial boolean for valgus knees: 1 if valgus, 0 ok
+                self.arduino.send_knee_valgus(valgus)
 
             frame = annotated
 

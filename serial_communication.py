@@ -25,7 +25,7 @@ class SerialController:
         while self.running:
             try:
                 msg = self.write_queue.get(timeout=0.1)
-                self.ser.write((msg + "\n").encode())
+                self.ser.write((msg).encode())
             except queue.Empty:
                 continue
             except Exception as e:
@@ -35,30 +35,36 @@ class SerialController:
     def read_loop(self):
         while self.running:
             try:
-                line = self.ser.readline().decode().strip()
+                line = self.ser.readline().decode(errors="ignore").strip()
                 if line:
+                    print("FROM ARDUINO:", line)    #For debug
                     self.parse_message(line)
             except Exception as e:
                 print("Serial error:", e)
 
     def parse_message(self, msg):
-        if msg.startswith("SQUATSTATE:"):
-            self.is_squatting = bool(int(msg.split(":")[1]))
+        print("PARSING:", msg)
+        if msg.startswith("SQUATSTATE"):
+            self.is_squatting = bool(int(msg.split(",")[1]))
+            print(f"SQUATSTATE: {self.is_squatting}")
 
         #TODO implement pressure data handling for UI
         # elif msg.startswith("PRESSURE:"):
         #     l, r, h = map(int, msg.split(":")[1].split(","))
 
-
-        elif msg == "REP_OK":
-            print("1 Rep completed")
+        elif msg.startswith("REP_OK"):
+            parts = msg.split(",")
+            if len(parts) == 3:
+                current = int(parts[1])
+                total = int(parts[2])
+                print(f"Rep {current}/{total}")
 
         elif msg == "SET_OK":
             print("Set completed")
 
     # ----------------- Send to arduino -----------------
     def send(self, msg):
-        self.write_queue.put(msg)
+        self.write_queue.put('['+msg+']') # add the chars that arduino script wants to receive messages
 
     def reset_pose(self):
         self.send("RESET")
@@ -67,13 +73,16 @@ class SerialController:
         self.send("QUIT")
 
     def set_reps(self, n):
-        self.send(f"SET_N_REPS:{n}")
+        self.send(f"SET_N_REPS,{n}")
 
     def save_pose(self):
         self.send("SAVE_POSE")
 
     def send_wrist_unbalanced(self, unbalanced: bool):
-        self.send(f"WRIST_UNBALANCED:{int(unbalanced)}")
+        self.send(f"WRIST_UNBALANCED,{int(unbalanced)}")
+
+    def send_knee_valgus(self, valgus: bool):
+        self.send(f"KNEE_VALGUS,{int(valgus)}")
 
     def close(self):
         self.running = False
