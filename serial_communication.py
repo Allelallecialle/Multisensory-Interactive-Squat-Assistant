@@ -12,6 +12,10 @@ class SerialController:
         self.running = True
 
         self.is_squatting = False
+        self.set_completed = False
+        self.rep_completed = False
+        self.current_reps = 0
+        self.total_reps = 0
         self.write_queue = queue.Queue()
 
         self.read_thread = threading.Thread(target=self.read_loop, daemon=True)
@@ -58,8 +62,11 @@ class SerialController:
                 current = int(parts[1])
                 total = int(parts[2])
                 print(f"Rep {current}/{total}")
+                self.current_reps = current
+                self.rep_completed = True
 
         elif msg == "SET_OK":
+            self.set_completed = True
             print("Set completed")
 
     # ----------------- Send to arduino -----------------
@@ -70,9 +77,13 @@ class SerialController:
         self.send("RESET")
 
     def quit_set(self):
+        self.set_completed = False
+        self.current_reps = 0
+        self.total_reps = 0
         self.send("QUIT")
 
     def set_reps(self, n):
+        self.total_reps = n
         self.send(f"SET_N_REPS,{n}")
 
     def save_pose(self):
@@ -83,6 +94,9 @@ class SerialController:
 
     def send_knee_valgus(self, valgus: bool):
         self.send(f"KNEE_VALGUS,{int(valgus)}")
+
+    def send_startup_UI(self):
+        self.send(f"INITIALIZE")
 
     def close(self):
         self.running = False

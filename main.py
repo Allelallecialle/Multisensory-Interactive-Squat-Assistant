@@ -8,5 +8,6 @@ if __name__ == "__main__":
     app = QApplication(sys.argv)
     arduino = SerialController()
     win = SquatUI(arduino)
+    win.initializing()  #sends to arduino the signal to initialize everything without restarting it manually
     win.show()
     sys.exit(app.exec())

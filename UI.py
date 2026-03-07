@@ -88,11 +88,10 @@ class SquatUI(QMainWindow):
 
         self.save_btn = QPushButton("Save pose")
         self.reset_btn = QPushButton("Reset pose")
-        self.quit_btn = QPushButton("Quit")
+        self.quit_btn = QPushButton("Quit set")
         self.confirm_reps_btn = QPushButton("Confirm repetitions")
         self.status = self.statusBar()
         self.status.setFixedHeight(28)  # small bottom box to show UI messages
-        self.status.showMessage("Ready")
 
         self.repetitions_to_achieve = 0
         self.squat_counter = 0
@@ -130,7 +129,15 @@ class SquatUI(QMainWindow):
         # ---- Timer ----
         self.timer = QTimer()
         self.timer.timeout.connect(self.update_frame)
+        self.timer.timeout.connect(self.show_messages)
         self.timer.start(30)
+
+    # ---- Start UI ----
+    def initializing(self):
+        self.arduino.send_startup_UI()
+        print("Initializing...")
+        self.statusBar().showMessage("Set your Squat pose and Repetitions")
+
 
     # ---- Stop UI ----
     def closeEvent(self, event):
@@ -174,12 +181,19 @@ class SquatUI(QMainWindow):
     def quit_set(self):
         self.arduino.quit_set()
         print("SET INTERRUPTED.")
-
         self.set_configured = False
         self.squat_counter = 0
-
         # UI feedback
         self.statusBar().showMessage("Set interrupted. Choose repetitions for next set.")
+
+    def show_messages(self):
+        if self.arduino.rep_completed == True:
+            self.statusBar().showMessage(f"Rep {self.arduino.current_reps}/{self.arduino.total_reps}", 3000)
+            self.arduino.rep_completed = False  #set immediately to false after sending the signal to detect future reps
+        if self.arduino.set_completed == True:
+            self.statusBar().showMessage("Set completed!", 10000)
+            self.arduino.set_completed = False
+
 
     # ----------------- Video loop -----------------
     def update_frame(self):
