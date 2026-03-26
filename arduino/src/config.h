@@ -1,6 +1,10 @@
 #include <Wire.h>
 #include <IIRFilter.h>
 #include <string.h>
+#include <Adafruit_BNO055.h>
+#include <Adafruit_Sensor.h>
+#include <utility/imumaths.h>
+#include <EEPROM.h>
 
 #pragma once
 #ifndef CONFIG_H
@@ -10,7 +14,23 @@
 #define ANALOG_PERIOD_MICROSECS 5000
 #define END_MARKER ']'
 #define START_MARKER '['
-#define MAX_LENGTH_MESSAGE 64
+
+#define SQUAT_ANGLE_THRESHOLD 12.0   // degrees to enter and exit squat movement from literature (Camomilla et al., Escamilla)
+#define SQUAT_EXIT_THRESHOLD 6.0
+#define SQUAT_MIN_TIME 200    // ms waited to correctly detect squat movement
+#define BNO055_PERIOD_MICROSECS 100.0e3f //= 1000 * PERIOD_MILLISECS;
+
+enum UserCommand {
+  CMD_NONE,
+  CMD_INITIALIZE,
+  CMD_QUIT,
+  CMD_RESET_POSE,
+  CMD_CONFIRM_POSE,
+  CMD_NUMBER,
+  CMD_WRISTS,
+  CMD_KNEES
+};
+
 //digital inputs
 extern const uint16_t digital_input0_pin;
 extern const uint16_t digital_input1_pin;
@@ -65,11 +85,65 @@ extern uint16_t previous_analog_input1_lp_filtered;
 extern uint16_t previous_analog_input2_lp_filtered;
 extern uint16_t previous_analog_input3_lp_filtered;
 
+// 50 Hz Butterworth low-pass
+extern double a_lp_50Hz[];
+extern double b_lp_50Hz[];
+
+// IIR filters for each analog input
+extern IIRFilter lp_analog_input0;
+extern IIRFilter lp_analog_input1;
+extern IIRFilter lp_analog_input2;
+extern IIRFilter lp_analog_input3;
+
 //Thresholds for each sensor
 extern uint16_t analog_input0_threshold;
 extern uint16_t analog_input1_threshold;
 extern uint16_t analog_input2_threshold;
 extern uint16_t analog_input3_threshold;
+
+//user pose calibration
+extern bool userPoseCalibrated;
+extern bool setConfigured;
+extern bool repLocked;   // to avoid double rep counting
+extern bool isSquatting; 
+
+extern int repetitions_to_achieve;
+extern int squat_counter;
+
+
+extern float refIMU1[3];   // x y z reference
+extern float refIMU2[3];
+
+extern unsigned long poseStableStart;
+extern const unsigned long POSE_STABLE_TIME; // ms required to maintain the concentric correct pose -> then trigger puredata reward sound
+extern const float ANGLE_TOLERANCE;           // degrees of tolerance of current squat pose from the calibrated one
+extern UserCommand lastCommand;
+extern int lastNumber;
+extern boolean new_message_received;
+constexpr byte MAX_LENGTH_MESSAGE = 64;
+extern char received_message[MAX_LENGTH_MESSAGE];
+
+//IMU
+/* Set the delay between fresh samples */
+static const unsigned long BNO055_PERIOD_MILLISECS = 100; // E.g. 4 milliseconds per sample for 250 Hz
+static uint32_t BNO055_last_read = 0;
+
+
+extern Adafruit_BNO055 bno_1;
+extern Adafruit_BNO055 bno_2;
+
+extern bool reset_calibration;
+extern bool display_BNO055_info;
+
+
+/* Set the correction factors for the three Euler angles according to the wanted orientation */
+extern float  correction_x;
+extern float  correction_y;
+extern float  correction_z;
+//vars defined to detect if the user is squatting or not
+
+// to handle serial inputs
+
 #endif
 
 
