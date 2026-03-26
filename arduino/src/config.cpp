@@ -104,6 +104,18 @@ float correction_z = 0; // 1.25;
 UserCommand lastCommand = CMD_NONE;
 int lastNumber = -1;
 
+// Pressure sensors
+const uint16_t pressure_sensor0_pin = 15;
+const uint16_t pressure_sensor1_pin = 16;
+const uint16_t pressure_sensor2_pin = 17;
+
+uint16_t pressure_sensor0_value = 0;
+uint16_t pressure_sensor1_value = 0;
+uint16_t pressure_sensor2_value = 0;
+
+uint16_t pressure_sensor_threshold = 50;
+uint32_t pressure_last_print = 0;
+
 
 
 

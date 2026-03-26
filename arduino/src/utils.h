@@ -73,6 +73,7 @@ bool detectSquatFromIMUs(float imu1[3], float imu2[3]);
 
 void setSquatStateMediapipe();
 
+void readPressureSensors();
 
 #endif
 

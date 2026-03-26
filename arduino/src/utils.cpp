@@ -468,6 +468,28 @@ void setSquatStateMediapipe(){
 
 }
 
+/** Pressure sensors ************************************************************************************************/
+
+void readPressureSensors() {
+  pressure_sensor0_value = analogRead(pressure_sensor0_pin);
+  pressure_sensor1_value = analogRead(pressure_sensor1_pin);
+  pressure_sensor2_value = analogRead(pressure_sensor2_pin);
+
+  bool p0 = pressure_sensor0_value > pressure_sensor_threshold;
+  bool p1 = pressure_sensor1_value > pressure_sensor_threshold;
+  bool p2 = pressure_sensor2_value > pressure_sensor_threshold;
+
+  if ((p0 || p1 || p2) && (millis() - pressure_last_print >= PRESSURE_PRINT_PERIOD_MS)) {
+    pressure_last_print = millis();
+    Serial.print("PRESSURE,");
+    Serial.print(pressure_sensor0_value);
+    Serial.print(",");
+    Serial.print(pressure_sensor1_value);
+    Serial.print(",");
+    Serial.println(pressure_sensor2_value);
+  }
+}
+
 /** Functions for handling received messages ***********************************************************************/
 
 void receive_message() {
@@ -477,8 +499,12 @@ void receive_message() {
     char rcv_char;
 
     while (Serial.available() > 0 && new_message_received == false) {
+        // Added to not lose typed user input from serial monitor
+        if (!reception_in_progress && Serial.peek() != START_MARKER) {
+          return;   // leave input for other parts (space, numbers, ...)
+        }
+
         rcv_char = Serial.read();
-        Serial.println(rcv_char);
 
         if (reception_in_progress == true) {
             if (rcv_char!= END_MARKER) {

@@ -140,9 +140,19 @@ extern bool display_BNO055_info;
 extern float  correction_x;
 extern float  correction_y;
 extern float  correction_z;
-//vars defined to detect if the user is squatting or not
+// Pressure sensors (Teensy 3.6 analog pins)
+extern const uint16_t pressure_sensor0_pin;
+extern const uint16_t pressure_sensor1_pin;
+extern const uint16_t pressure_sensor2_pin;
 
-// to handle serial inputs
+extern uint16_t pressure_sensor0_value;
+extern uint16_t pressure_sensor1_value;
+extern uint16_t pressure_sensor2_value;
+
+extern uint16_t pressure_sensor_threshold;
+extern uint32_t pressure_last_print;
+
+#define PRESSURE_PRINT_PERIOD_MS 200
 
 #endif
 

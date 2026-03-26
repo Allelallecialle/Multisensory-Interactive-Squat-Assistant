@@ -15,6 +15,7 @@
 
 void setup(){
     Serial.begin(BAUD_RATE);
+    while(!Serial);
 
     //setup digital sensors  
     pinMode(digital_input0_pin, INPUT);
@@ -62,6 +63,8 @@ void setup(){
 void loop(){
 
     receive_message();
+
+    //readPressureSensors();
 
     analog_digital_loop();
 }
