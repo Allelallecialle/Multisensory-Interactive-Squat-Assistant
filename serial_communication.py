@@ -3,11 +3,15 @@ import queue
 import serial
 import threading
 
-#Python controller that sends to arduino: [RESET], [SET_N_REPS], [SAVE_POSE], [QUIT], [WRIST_UNBALANCED]
+from puredata_communication import send_to_puredata
+
+
+#Python controller that sends to arduino: [RESET], [SET_N_REPS], [SAVE_POSE], [QUIT], [WRIST_UNBALANCED], [KNEE_VALGUS]
 #Viceversa python receives: SQUATSTATE (i.e. is_squatting bool to know when to check valgus knees), REP_OK,
 # pressure values to draw on UI, current number of repetitions SET_OK
 class SerialController:
-    def __init__(self, port="/dev/ttyACM0", baud=115200):
+    # "/dev/ttyACM0"
+    def __init__(self, port="/dev/ttyUSB0", baud=115200):
         self.ser = serial.Serial(port, baud, timeout=0.1)
         self.running = True
 
@@ -16,6 +20,8 @@ class SerialController:
         self.rep_completed = False
         self.current_reps = 0
         self.total_reps = 0
+        self.left_pressure = [0, 0, 0]
+        self.right_pressure = [0, 0, 0]
         self.write_queue = queue.Queue()
 
         self.read_thread = threading.Thread(target=self.read_loop, daemon=True)
@@ -51,10 +57,14 @@ class SerialController:
         if msg.startswith("SQUATSTATE"):
             self.is_squatting = bool(int(msg.split(",")[1]))
             print(f"SQUATSTATE: {self.is_squatting}")
+            send_to_puredata("SQUATSTATE", self.is_squatting)
 
         #TODO implement pressure data handling for UI
-        # elif msg.startswith("PRESSURE:"):
-        #     l, r, h = map(int, msg.split(":")[1].split(","))
+        elif msg.startswith("PRESSURE:"):
+            vals = list(map(int, msg.split(":")[1].split(",")))
+            # left foot 3 sensors, right foot 3 sensors
+            self.left_pressure = vals[:3]
+            self.right_pressure = vals[3:]
 
         elif msg.startswith("REP_OK"):
             parts = msg.split(",")
@@ -64,10 +74,12 @@ class SerialController:
                 print(f"Rep {current}/{total}")
                 self.current_reps = current
                 self.rep_completed = True
+                send_to_puredata("rep_reward", 1)
 
         elif msg == "SET_OK":
             self.set_completed = True
             print("Set completed")
+            send_to_puredata("set_reward", 1)
 
     # ----------------- Send to arduino -----------------
     def send(self, msg):
@@ -91,9 +103,13 @@ class SerialController:
 
     def send_wrist_unbalanced(self, unbalanced: bool):
         self.send(f"WRIST_UNBALANCED,{int(unbalanced)}")
+        # send signal to puredata
+        send_to_puredata("wrists", unbalanced)
 
     def send_knee_valgus(self, valgus: bool):
         self.send(f"KNEE_VALGUS,{int(valgus)}")
+        #send signal to puredata
+        send_to_puredata("knees", valgus)
 
     def send_startup_UI(self):
         self.send(f"INITIALIZE")
