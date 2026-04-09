@@ -35,6 +35,13 @@ It analyzes body posture adapting to the user, detects repetitions, and provides
 
 
 #### To load the arduino code
+in order to be able to use the arduino code you need to install platformio:
+-   for arch just type `pacman -S platformio`
+
+in order to build and upload the app on the board, inn this case we use the teensy board go into the terminal and type:
+`pio run -e teensy36 -t upload`
+with -e flag will be building the environment teensy36, you can find more details when seeing the platformio.ini file to set a new test environment by adding `[env:env_name]` and specifying which files to take in account and which to not consider by adding the line: `src_filter=-<files_not_to_build> +<files_to_build>`
+
 
 
 ## Authors
