@@ -63,7 +63,7 @@ class SquatUI(QMainWindow):
         self.timestamp = 0
         self.arduino = arduino
         # ---- Camera ----
-        self.cam = cv2.VideoCapture(0)
+        self.cam = cv2.VideoCapture(1)
 
         # ---- MediaPipe ----
         base_options = python.BaseOptions(
