@@ -34,6 +34,11 @@ void setup(){
     digitalWrite(digital_output3_pin, LOW);
     digitalWrite(digital_output4_pin, LOW);
 
+    //setup pressure sensors
+    pinMode(FSR_FL, INPUT);
+    pinMode(FSR_FR, INPUT);
+    pinMode(FSR_H, INPUT);
+
       /* Setup of the IMU BNO055 sensor ******************************************************************************/
   
   /* Initialise the IMU BNO055 sensor */
@@ -64,7 +69,7 @@ void loop(){
 
     receive_message();
 
-    //readPressureSensors();
+    readPressureSensors();
 
     analog_digital_loop();
 }

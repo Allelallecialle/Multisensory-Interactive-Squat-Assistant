@@ -471,22 +471,70 @@ void setSquatStateMediapipe(){
 /** Pressure sensors ************************************************************************************************/
 
 void readPressureSensors() {
-  pressure_sensor0_value = analogRead(pressure_sensor0_pin);
-  pressure_sensor1_value = analogRead(pressure_sensor1_pin);
-  pressure_sensor2_value = analogRead(pressure_sensor2_pin);
+  int fsrFL = analogRead(FSR_FL);
+  int fsrFR = analogRead(FSR_FR);
+  int fsrH = analogRead(FSR_H);
 
-  bool p0 = pressure_sensor0_value > pressure_sensor_threshold;
-  bool p1 = pressure_sensor1_value > pressure_sensor_threshold;
-  bool p2 = pressure_sensor2_value > pressure_sensor_threshold;
+  if(fsrFL > 1.0 || fsrFR > 1.0 || fsrH > 1.0){
 
-  if ((p0 || p1 || p2) && (millis() - pressure_last_print >= PRESSURE_PRINT_PERIOD_MS)) {
-    pressure_last_print = millis();
-    Serial.print("PRESSURE,");
-    Serial.print(pressure_sensor0_value);
-    Serial.print(",");
-    Serial.print(pressure_sensor1_value);
-    Serial.print(",");
-    Serial.println(pressure_sensor2_value);
+    // Convert the raw readings to voltages
+    float fsrFL_V = fsrFL * VCC / 1023.0;
+    float fsrH_V = fsrH * VCC / 1023.0;
+    float fsrFR_V = fsrFR * VCC / 1023.0;
+
+    //calculate resistance fsr
+    float fsrFL_R = R_DIV * (VCC / fsrFL_V - 1.0);
+    float fsrH_R = R_DIV * (VCC / fsrH_V - 1.0);
+    float fsrFR_R = R_DIV * (VCC / fsrFR_V - 1.0);
+
+    //guess force based on slops
+    float forceFL;
+    float fsrG_FL = 1.0 / fsrFL_R;
+    //break parabolic curve down into two linear slopes
+    if(fsrFL_R <= 400)
+      forceFL = (fsrG_FL - 0.00075) / 0.00000032639;
+    else
+      forceFL = fsrG_FL / 0.000000642857;
+
+    Serial.println("Force FL: " + String(forceFL) + " g\n");
+
+    float forceH;
+    float fsrG_H = 1.0 / fsrH_R;
+    if(fsrH_R <= 400)
+      forceH = (fsrG_H - 0.00075) / 0.00000032639;
+    else
+      forceH = fsrG_H / 0.000000642857;
+
+    Serial.println("Force H: " + String(forceH) + " g\n");
+
+    float forceFR;
+    float fsrG_FR = 1.0 / fsrFR_R;
+    if(fsrFR_R <= 400)
+      forceFR = (fsrG_FR - 0.00075) / 0.00000032639;
+    else
+      forceFR = fsrG_FR / 0.000000642857;
+
+    Serial.println("Force FR: " + String(forceFR) + " g\n");
+
+
+    //showing percentage on each fsr based on the total amount of force detected on the three fsr
+    float totalForce = forceFL + forceFR + forceH;
+    float percentageFL = (forceFL / totalForce) * 100.0;
+    float percentageH = (forceH / totalForce) * 100.0;
+    float percentageFR = (forceFR / totalForce) * 100.0;
+
+    Serial.println("Percentage FL: " + String(percentageFL) + " %\n");
+    Serial.println("Percentage H: " + String(percentageH) + " %\n");
+    Serial.println("Percentage FR: " + String(percentageFR) + " %\n");
+
+    delay(500); // Delay to avoid flooding the serial output
+
+  }
+
+  else 
+  {
+    Serial.println("No significant force detected on the sensors.\n");
+    delay(500); // Delay to avoid flooding the serial output
   }
 }
 

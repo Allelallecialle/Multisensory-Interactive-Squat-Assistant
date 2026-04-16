@@ -19,6 +19,7 @@
 #define SQUAT_EXIT_THRESHOLD 6.0
 #define SQUAT_MIN_TIME 200    // ms waited to correctly detect squat movement
 #define BNO055_PERIOD_MICROSECS 100.0e3f //= 1000 * PERIOD_MILLISECS;
+#define PERIOD_MICROSECS 1000 // 1 ms loop period for reading sensors and sending data to PureData
 
 enum UserCommand {
   CMD_NONE,
@@ -151,6 +152,21 @@ extern uint16_t pressure_sensor2_value;
 
 extern uint16_t pressure_sensor_threshold;
 extern uint32_t pressure_last_print;
+
+
+// FSR values
+extern const uint16_t FSR_FL; // Front Left
+extern const uint16_t FSR_FR; // Front Right
+extern const uint16_t FSR_H;  // Heel
+
+extern const float VCC;      // Supply voltage for the FSR circuit
+extern const float R_DIV;    // Resistance of the fixed resistor in the FSR voltage divider
+
+extern float analog_FSR_H_filtered;
+extern float analog_FSR_FL_filtered;
+extern float analog_FSR_FR_filtered;
+extern float EMA_alpha; // Lower = more smoothing. Adjust between 0.05 (heavy) and 0.3 (light)
+
 
 #define PRESSURE_PRINT_PERIOD_MS 200
 
