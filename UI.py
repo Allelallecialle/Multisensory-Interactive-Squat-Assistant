@@ -1,7 +1,7 @@
 import time
 import numpy as np
-from PySide6.QtCore import QTimer, Qt
-from PySide6.QtGui import QImage, QPixmap
+from PySide6.QtCore import QTimer, Qt, QRectF
+from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QBrush, QPen
 from PySide6.QtWidgets import (
     QMainWindow, QWidget,
     QLabel, QPushButton, QSpinBox,
@@ -80,7 +80,7 @@ class SquatUI(QMainWindow):
         # ---- UI ----
         self.video_label = QLabel()
         self.video_label.setAlignment(Qt.AlignCenter)
-        self.video_label.setMinimumSize(640, 480)
+        self.video_label.setMinimumSize(680, 650)
         self.video_label.setSizePolicy(
             QSizePolicy.Expanding,
             QSizePolicy.Expanding
@@ -101,21 +101,34 @@ class SquatUI(QMainWindow):
         self.reps_spin.setValue(10)
 
         controls = QVBoxLayout()
+        controls.addStretch()
         controls.addWidget(self.save_btn)
         controls.addWidget(self.reset_btn)
         controls.addWidget(QLabel("Repetitions"))
         controls.addWidget(self.reps_spin)
         controls.addWidget(self.confirm_reps_btn)
-        controls.addStretch()
         controls.addWidget(self.quit_btn)
 
         bottom = QHBoxLayout()
         bottom.addLayout(controls)
 
-        main = QVBoxLayout()
-        main.addWidget(self.video_label, stretch=4)
-        main.addLayout(bottom, stretch=1)
+        # ---- Pressure widget ----
+        self.pressure_widget = PressureWidget()
 
+        # ---- Right section ---- (pressure section + controls)
+        right_col = QVBoxLayout()
+        right_col.addSpacing(200)
+        right_col.addWidget(self.pressure_widget)
+        right_col.addLayout(bottom)
+
+        # ---- Top section ---- (video)
+        top = QHBoxLayout()
+        top.addWidget(self.video_label, stretch=3)
+        top.addLayout(right_col, stretch=1)
+
+        # ---- Main layout ----
+        main = QVBoxLayout()
+        main.addLayout(top)
         container = QWidget()
         container.setLayout(main)
         self.setCentralWidget(container)
@@ -251,6 +264,9 @@ class SquatUI(QMainWindow):
 
         self.display_frame(frame)
 
+        # update pressure section
+        self.pressure_widget.set_values(self.arduino.left_pressure, self.arduino.right_pressure)
+
     # ----------------- Opencv frame to Qt -----------------
     def display_frame(self, frame):
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -267,3 +283,67 @@ class SquatUI(QMainWindow):
 
         self.video_label.setPixmap(pix)
 
+# ------- Pressure screen section -------
+class PressureWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+
+        # values 0-1023 from arduino
+        self.left = [0, 0, 0]   # [front_left, front_right, heel]
+        self.right = [0, 0, 0]
+
+        self.setMinimumSize(230, 250)
+
+    def set_values(self, left, right):
+        self.left = left
+        self.right = right
+        self.update()
+
+    def color_for_value(self, v):
+        if v < 300:
+            # green
+            return QColor(0, 200, 0)
+        elif v < 600:
+            # orange
+            return QColor(255, 165, 0)
+        else:
+            # red
+            return QColor(220, 0, 0)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setRenderHint(QPainter.Antialiasing)
+
+        w = self.width()
+        h = self.height()
+
+        foot_w = w * 0.35
+        foot_h = h * 0.7
+
+        left_x = w * 0.1
+        right_x = w * 0.55
+        y = h * 0.15
+
+        self.draw_foot(painter, left_x, y, foot_w, foot_h, self.left)
+        self.draw_foot(painter, right_x, y, foot_w, foot_h, self.right)
+
+    def draw_foot(self, painter, x, y, w, h, values):
+        # outline
+        painter.setPen(QPen(QColor(200, 200, 200), 2))
+        painter.drawRoundedRect(QRectF(x, y, w, h), 30, 30)
+
+        # zones
+        front_h = h * 0.45
+        heel_h = h * 0.35
+
+        # front left
+        painter.setBrush(QBrush(self.color_for_value(values[0])))
+        painter.drawEllipse(QRectF(x + w*0.1, y + h*0.05, w*0.35, front_h))
+
+        # front right
+        painter.setBrush(QBrush(self.color_for_value(values[1])))
+        painter.drawEllipse(QRectF(x + w*0.55, y + h*0.05, w*0.35, front_h))
+
+        # heel
+        painter.setBrush(QBrush(self.color_for_value(values[2])))
+        painter.drawEllipse(QRectF(x + w*0.25, y + h*0.55, w*0.5, heel_h))

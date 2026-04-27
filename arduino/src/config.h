@@ -155,9 +155,6 @@ extern uint32_t pressure_last_print;
 
 
 // FSR values
-extern const uint16_t FSR_FL; // Front Left
-extern const uint16_t FSR_FR; // Front Right
-extern const uint16_t FSR_H;  // Heel
 
 extern const float VCC;      // Supply voltage for the FSR circuit
 extern const float R_DIV;    // Resistance of the fixed resistor in the FSR voltage divider
