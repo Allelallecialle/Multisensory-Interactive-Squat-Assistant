@@ -41,8 +41,6 @@ char END_MARKER = ']';
 boolean new_message_received = false;
 
 
-
-
 /* Digital inputs *************************************************************/
 
 const uint16_t digital_input0_pin = 0;
@@ -619,47 +617,6 @@ void setSquatStateMediapipe(){
 
 /** Functions for handling received messages ***********************************************************************/
 
-void receive_message() {
-  
-    static boolean reception_in_progress = false;
-    static byte ndx = 0;
-    char rcv_char;
-
-    while (Serial.available() > 0 && new_message_received == false) {
-        // Added to not lose typed user input from serial monitor
-        if (!reception_in_progress && Serial.peek() != START_MARKER) {
-          return;   // leave input for other parts (space, numbers, ...)
-        }
-
-        rcv_char = Serial.read();
-
-        if (reception_in_progress == true) {
-            if (rcv_char!= END_MARKER) {
-                received_message[ndx] = rcv_char;
-                ndx++;
-                if (ndx >= MAX_LENGTH_MESSAGE) {
-                    ndx = MAX_LENGTH_MESSAGE - 1;
-                }
-            }
-            else {
-                received_message[ndx] = '\0'; // terminate the string
-                reception_in_progress = false;
-                ndx = 0;
-                new_message_received = true;
-            }
-        }
-        else if (rcv_char == START_MARKER) {
-            reception_in_progress = true;
-        }
-    }
-
-    if (new_message_received) {
-      handle_received_message(received_message);
-      new_message_received = false;
-    }
-}
-
-
 
 void handle_received_message(char *received_message) {
   char *all_tokens[2] = {NULL, NULL}; //NOTE: the message is composed by 2 tokens: command and value
@@ -768,7 +725,47 @@ void handle_received_message(char *received_message) {
     analogWrite(digital_output4_pin, atoi(value));
     
   }  */
-} 
+}
+
+void receive_message() {
+  
+    static boolean reception_in_progress = false;
+    static byte ndx = 0;
+    char rcv_char;
+
+    while (Serial.available() > 0 && new_message_received == false) {
+        // Added to not lose typed user input from serial monitor
+        if (!reception_in_progress && Serial.peek() != START_MARKER) {
+          return;   // leave input for other parts (space, numbers, ...)
+        }
+
+        rcv_char = Serial.read();
+
+        if (reception_in_progress == true) {
+            if (rcv_char!= END_MARKER) {
+                received_message[ndx] = rcv_char;
+                ndx++;
+                if (ndx >= MAX_LENGTH_MESSAGE) {
+                    ndx = MAX_LENGTH_MESSAGE - 1;
+                }
+            }
+            else {
+                received_message[ndx] = '\0'; // terminate the string
+                reception_in_progress = false;
+                ndx = 0;
+                new_message_received = true;
+            }
+        }
+        else if (rcv_char == START_MARKER) {
+            reception_in_progress = true;
+        }
+    }
+
+    if (new_message_received) {
+      handle_received_message(received_message);
+      new_message_received = false;
+    }
+}
 
 
 
@@ -942,60 +939,6 @@ void loop() {
     bno_2.getEvent(&orientationData2, Adafruit_BNO055::VECTOR_EULER);
     bno_2.getEvent(&angVelData2, Adafruit_BNO055::VECTOR_GYROSCOPE);
     bno_2.getEvent(&linearAccelData2, Adafruit_BNO055::VECTOR_LINEARACCEL);
-    
-    
-    /*
-     Note:
-     x = Yaw, y = Roll, z = pitch 
-     
-     The Yaw values are between 0° to +360°
-     The Roll values are between -90° and +90°
-     The Pitch values are between -180° and +180°
-    */ 
-    
-    /*
-    Serial.print(": Euler x= ");
-    Serial.print(orientationData.orientation.x + correction_x); // I add a correction value to get the 0 for the orientation I need 
-    Serial.print(" | Euler y= ");
-    Serial.print(orientationData.orientation.y + correction_y);
-    Serial.print(" | Euler z= ");
-    Serial.print(orientationData.orientation.z + correction_z);
-    */
-    /* UNCOMMENT TO SEE IMU DATA
-    Serial.print("--- IMU 1 ---");
-    Serial.print("x, ");
-    Serial.println(orientationData1.orientation.x + correction_x); // I add a correction value to get the 0 for the orientation I need 
-    Serial.print("y, ");
-    Serial.println(orientationData1.orientation.y + correction_y); // I add a correction value to get the 0 for the orientation I need 
-    Serial.print("z, ");
-    Serial.println(orientationData1.orientation.z + correction_z); // I add a correction value to get the 0 for the orientation I need 
-    Serial.print("--------------------------------------------------");
-    Serial.print("\n --- IMU 2 ---");
-    Serial.print("\n x, ");
-    Serial.println(orientationData2.orientation.x + correction_x); // I add a correction value to get the 0 for the orientation I need 
-    Serial.print("y, ");
-    Serial.println(orientationData2.orientation.y + correction_y); // I add a correction value to get the 0 for the orientation I need 
-    Serial.print("z, ");
-    Serial.println(orientationData2.orientation.z + correction_z); // I add a correction value to get the 0 for the orientation I need 
-    */
-    /*
-    Serial.print(": angVel x= ");
-    Serial.print(angVelData.gyro.x);
-    Serial.print(" | angVel y= ");
-    Serial.print(angVelData.gyro.y);
-    Serial.print(" | angVel z= ");
-    Serial.print(angVelData.gyro.z);
-
-    Serial.print(": linearAccel x= ");
-    Serial.print(linearAccelData.acceleration.x);
-    Serial.print(" | linearAccel y= ");
-    Serial.print(linearAccelData.acceleration.y);
-    Serial.print(" | linearAccel z= ");
-    Serial.print(linearAccelData.acceleration.z);
-    */
-
-    
-    //Serial.println("");
   
 
     // Initialize everything restarting the arduino loop() when the Python UI is launched. This avoids restarting manually the arduino
