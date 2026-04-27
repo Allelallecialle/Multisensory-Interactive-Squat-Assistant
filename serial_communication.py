@@ -3,12 +3,14 @@ import queue
 import serial
 import threading
 
+from puredata_communication import send_to_puredata
+
 
 #Python controller that sends to arduino: [RESET], [SET_N_REPS], [SAVE_POSE], [QUIT], [WRIST_UNBALANCED], [KNEE_VALGUS]
 #Viceversa python receives: SQUATSTATE (i.e. is_squatting bool to know when to check valgus knees), REP_OK,
 # pressure values to draw on UI, current number of repetitions SET_OK
 class SerialController:
-    # "/dev/ttyACM0"
+    # "/dev/ttyACM0" o USB0
     def __init__(self, port="/dev/ttyACM0", baud=115200):
         self.ser = serial.Serial(port, baud, timeout=0.1)
         self.running = True
