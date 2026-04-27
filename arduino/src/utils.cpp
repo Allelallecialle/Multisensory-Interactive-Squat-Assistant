@@ -470,10 +470,15 @@ void setSquatStateMediapipe(){
 
 /** Pressure sensors ************************************************************************************************/
 
-void readPressureSensors() {
-  int fsrFL = analogRead(FSR_FL);
-  int fsrFR = analogRead(FSR_FR);
-  int fsrH = analogRead(FSR_H);
+void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
+
+  pinMode(FL, INPUT);
+  pinMode(FR, INPUT);
+  pinMode(H, INPUT);
+
+  int fsrFL = analogRead(FL);
+  int fsrFR = analogRead(FR);
+  int fsrH = analogRead(H);
 
   if(fsrFL > 1.0 || fsrFR > 1.0 || fsrH > 1.0){
 
@@ -496,7 +501,7 @@ void readPressureSensors() {
     else
       forceFL = fsrG_FL / 0.000000642857;
 
-    Serial.println("Force FL: " + String(forceFL) + " g\n");
+    // Serial.println("Force FL: " + String(forceFL) + " g\r");
 
     float forceH;
     float fsrG_H = 1.0 / fsrH_R;
@@ -505,7 +510,7 @@ void readPressureSensors() {
     else
       forceH = fsrG_H / 0.000000642857;
 
-    Serial.println("Force H: " + String(forceH) + " g\n");
+    // Serial.println("Force H: " + String(forceH) + " g\r");
 
     float forceFR;
     float fsrG_FR = 1.0 / fsrFR_R;
@@ -514,7 +519,7 @@ void readPressureSensors() {
     else
       forceFR = fsrG_FR / 0.000000642857;
 
-    Serial.println("Force FR: " + String(forceFR) + " g\n");
+    // Serial.println("Force FR: " + String(forceFR) + " g\r");
 
 
     //showing percentage on each fsr based on the total amount of force detected on the three fsr
@@ -522,10 +527,11 @@ void readPressureSensors() {
     float percentageFL = (forceFL / totalForce) * 100.0;
     float percentageH = (forceH / totalForce) * 100.0;
     float percentageFR = (forceFR / totalForce) * 100.0;
-
-    Serial.println("Percentage FL: " + String(percentageFL) + " %\n");
-    Serial.println("Percentage H: " + String(percentageH) + " %\n");
-    Serial.println("Percentage FR: " + String(percentageFR) + " %\n");
+    
+    Serial.print(name + " - ");
+    Serial.println("Percentage FL: " + String(percentageFL) + " %\r");
+    Serial.println("Percentage H: " + String(percentageH) + " %\r");
+    Serial.println("Percentage FR: " + String(percentageFR) + " %\r");
 
     delay(500); // Delay to avoid flooding the serial output
 

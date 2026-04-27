@@ -109,12 +109,6 @@ int lastNumber = -1;
 uint16_t pressure_sensor_threshold = 50;
 uint32_t pressure_last_print = 0;
 
-
-// FSR values
-const uint16_t FSR_FL = 14; // Front Left
-const uint16_t FSR_FR = 15; // Front Right
-const uint16_t FSR_H = 16;  // Heel
-
 const float VCC = 3.3;      // Supply voltage for the FSR circuit
 const float R_DIV = 10000;  // Resistance of the fixed resistor in the FSR voltage divider
 
