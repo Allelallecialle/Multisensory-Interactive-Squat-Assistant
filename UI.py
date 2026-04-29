@@ -1,11 +1,8 @@
 import time
 import numpy as np
-from PySide6.QtCore import QTimer, Qt, QRectF
-from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QBrush, QPen
-from PySide6.QtWidgets import (
-    QMainWindow, QWidget,
-    QLabel, QPushButton, QSpinBox,
-    QVBoxLayout, QHBoxLayout, QSizePolicy, QApplication)
+from PySide6.QtCore import QTimer, Qt, QRectF, QPointF
+from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QBrush, QPen, QPainterPath
+from PySide6.QtWidgets import QMainWindow, QWidget, QLabel, QPushButton, QSpinBox, QVBoxLayout, QHBoxLayout, QSizePolicy, QApplication
 import mediapipe as mp
 from mediapipe.tasks import python
 from mediapipe.tasks.python import vision
@@ -287,32 +284,29 @@ class SquatUI(QMainWindow):
 class PressureWidget(QWidget):
     def __init__(self):
         super().__init__()
-
-        # values 0-1023 from arduino
-        self.left = [0, 0, 0]   # [front_left, front_right, heel]
+        self.left = [0, 0, 0]
         self.right = [0, 0, 0]
-
         self.setMinimumSize(230, 250)
 
     def set_values(self, left, right):
+        # set pressure % from arduino
         self.left = left
         self.right = right
         self.update()
 
-    def color_for_value(self, v):
-        if v < 300:
-            # green
-            return QColor(0, 200, 0)
-        elif v < 600:
-            # orange
-            return QColor(255, 165, 0)
+    def color_for_percent(self, p):
+        if 10 <= p < 20:
+            return QColor(0, 0, 0)  # set white
+        elif 20 <= p <= 45:
+            return QColor(50, 200, 70)  #set green
+        elif 45 < p <= 60:
+            return QColor(255, 165, 0)  #set orange
         else:
-            # red
-            return QColor(220, 0, 0)
+            return QColor(220, 40, 40)  #set red
 
     def paintEvent(self, event):
         painter = QPainter(self)
-        painter.setRenderHint(QPainter.Antialiasing)
+        #painter.setRenderHint(QPainter.Antialiasing)
 
         w = self.width()
         h = self.height()
@@ -328,6 +322,29 @@ class PressureWidget(QWidget):
         self.draw_foot(painter, right_x, y, foot_w, foot_h, self.right)
 
     def draw_foot(self, painter, x, y, w, h, values):
+        #------- Foot outline --------
+        path = QPainterPath()
+        path.moveTo(x + w * 0.45, y)
+        path.cubicTo(
+            x + w * 0.1, y + h * 0.05,
+            x, y + h * 0.45,
+            x + w * 0.25, y + h * 0.9
+        )
+        path.cubicTo(
+            x + w * 0.35, y + h,
+            x + w * 0.75, y + h,
+            x + w * 0.8, y + h * 0.8
+        )
+        path.cubicTo(
+            x + w, y + h * 0.45,
+            x + w * 0.85, y + h * 0.1,
+            x + w * 0.55, y
+        )
+
+        painter.setPen(QPen(QColor(180, 180, 180), 3))
+        #painter.setBrush(Qt.NoBrush)
+        painter.drawPath(path)
+
         # outline
         painter.setPen(QPen(QColor(200, 200, 200), 2))
         painter.drawRoundedRect(QRectF(x, y, w, h), 30, 30)
@@ -337,13 +354,24 @@ class PressureWidget(QWidget):
         heel_h = h * 0.35
 
         # front left
-        painter.setBrush(QBrush(self.color_for_value(values[0])))
+        painter.setBrush(QBrush(self.color_for_percent(values[0])))
         painter.drawEllipse(QRectF(x + w*0.1, y + h*0.05, w*0.35, front_h))
 
         # front right
-        painter.setBrush(QBrush(self.color_for_value(values[1])))
+        painter.setBrush(QBrush(self.color_for_percent(values[1])))
         painter.drawEllipse(QRectF(x + w*0.55, y + h*0.05, w*0.35, front_h))
 
         # heel
-        painter.setBrush(QBrush(self.color_for_value(values[2])))
+        painter.setBrush(QBrush(self.color_for_percent(values[2])))
         painter.drawEllipse(QRectF(x + w*0.25, y + h*0.55, w*0.5, heel_h))
+
+        # ------- Percentage labels ---------
+        painter.setPen(255,255,255)   #black
+        labels = [
+            (x + w * 0.28, y + h * 0.25, values[0]),
+            (x + w * 0.64, y + h * 0.25, values[1]),
+            (x + w * 0.48, y + h * 0.71, values[2])
+        ]
+
+        for lx, ly, val in labels:
+            painter.drawText(QPointF(lx, ly), f"{int(val)}%")
