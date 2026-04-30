@@ -13,14 +13,14 @@ void analog_digital_loop() {
       analog_input1_lp_filtered =  (uint16_t)lp_analog_input1.filter((double)analog_input1);
       analog_input2 = analogRead(analog_input2_pin);
       analog_input2_lp_filtered =  (uint16_t)lp_analog_input2.filter((double)analog_input2);                
-      analog_input3 = analogRead(analog_input3_pin);
-      analog_input3_lp_filtered =  (uint16_t)lp_analog_input3.filter((double)analog_input3);
+      // analog_input3 = analogRead(analog_input3_pin);
+      // analog_input3_lp_filtered =  (uint16_t)lp_analog_input3.filter((double)analog_input3);
 
       // Apply thresholds to the filtered signal
       analog_input0_lp_filtered = (analog_input0_lp_filtered < analog_input0_threshold) ? 0 : analog_input0_lp_filtered;
       analog_input1_lp_filtered = (analog_input1_lp_filtered < analog_input1_threshold) ? 0 : analog_input1_lp_filtered;
       analog_input2_lp_filtered = (analog_input2_lp_filtered < analog_input2_threshold) ? 0 : analog_input2_lp_filtered;
-      analog_input3_lp_filtered = (analog_input3_lp_filtered < analog_input3_threshold) ? 0 : analog_input3_lp_filtered;
+      // analog_input3_lp_filtered = (analog_input3_lp_filtered < analog_input3_threshold) ? 0 : analog_input3_lp_filtered;
   
     }
 
@@ -480,7 +480,7 @@ void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
   int fsrFR = analogRead(FR);
   int fsrH = analogRead(H);
 
-  if(fsrFL > 1.0 || fsrFR > 1.0 || fsrH > 1.0){
+  // if(fsrFL > 1.0 || fsrFR > 1.0 || fsrH > 1.0){
 
     // Convert the raw readings to voltages
     float fsrFL_V = fsrFL * VCC / 1023.0;
@@ -535,13 +535,13 @@ void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
 
     delay(500); // Delay to avoid flooding the serial output
 
-  }
+  // }
 
-  else 
-  {
-    Serial.println("No significant force detected on the sensors.\n");
-    delay(500); // Delay to avoid flooding the serial output
-  }
+  // else 
+  // {
+  //   Serial.println("No significant force detected on the sensors.\n");
+  //   delay(500); // Delay to avoid flooding the serial output
+  // }
 }
 
 /** Functions for handling received messages ***********************************************************************/

@@ -812,14 +812,14 @@ void setup() {
   
   /* Initialise the IMU BNO055 sensor */
   delay(1000);
-  if (!bno_1.begin()){
-    /* There was a problem detecting the BNO055 ... check your connections */
-    Serial.print("Ooops, no BNO055 1 detected ... Check your wiring or I2C ADDR!");
-    while (1);
-  }
   if (!bno_2.begin()){
     /* There was a problem detecting the BNO055 ... check your connections */
     Serial.print("Ooops, no BNO055 2 detected ... Check your wiring or I2C ADDR!");
+    while (1);
+  }
+  if (!bno_1.begin()){
+    /* There was a problem detecting the BNO055 ... check your connections */
+    Serial.print("Ooops, no BNO055 1 detected ... Check your wiring or I2C ADDR!");
     while (1);
   }
 

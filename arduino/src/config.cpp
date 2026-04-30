@@ -90,8 +90,8 @@ boolean new_message_received = false;
 char received_message[64];
 
 // IMU
-Adafruit_BNO055 bno_1(1, BNO055_ADDRESS_A); // 0x28 pin 18
-Adafruit_BNO055 bno_2(2, BNO055_ADDRESS_B); // 0x29 pin 19
+Adafruit_BNO055 bno_1(1, BNO055_ADDRESS_A, &Wire); // 0x28 pin 18
+Adafruit_BNO055 bno_2(2, BNO055_ADDRESS_A, &Wire2); // 0x29 pin 19
 
 bool reset_calibration = false;  // set to true if you want to redo the calibration rather than using the values stored in the EEPROM
 bool display_BNO055_info = true; // set to true if you want to print on the serial port the information about the status and calibration of the IMU

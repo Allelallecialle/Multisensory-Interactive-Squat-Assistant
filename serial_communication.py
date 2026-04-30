@@ -3,7 +3,7 @@ import queue
 import serial
 import threading
 
-from puredata_communication import send_to_puredata
+import puredata_communication
 
 
 #Python controller that sends to arduino: [RESET], [SET_N_REPS], [SAVE_POSE], [QUIT], [WRIST_UNBALANCED], [KNEE_VALGUS]
