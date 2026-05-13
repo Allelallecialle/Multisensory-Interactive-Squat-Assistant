@@ -103,7 +103,7 @@ void loop()
       forceFL = (fsrG - 0.00075) / 0.00000032639;
     else
       forceFL =  fsrG / 0.000000642857;
-    Serial.println("Force FL: " + String(forceFL) + " g\n");
+//    Serial.println("Force FL: " + String(forceFL) + " g\n");
 
 
     float forceFR;
@@ -111,7 +111,7 @@ void loop()
     // Break parabolic curve down into two linear slopes:
     if (fsrR2 <= 400)      forceFR = (fsrG2 - 0.00075) / 0.00000032639;
     else                    forceFR =  fsrG2 / 0.000000642857;
-    Serial.println("Force FR: " + String(forceFR) + " g\n");
+//    Serial.println("Force FR: " + String(forceFR) + " g\n");
 
 
     float forceH;
@@ -119,7 +119,7 @@ void loop()
     // Break parabolic curve down into two linear slopes:
     if (fsrR3 <= 400)      forceH = (fsrG3 - 0.00075) / 0.00000032639;
     else                    forceH =  fsrG3 / 0.000000642857;
-    Serial.println("Force H: " + String(forceH) + " g\n");  
+//    Serial.println("Force H: " + String(forceH) + " g\n");
     Serial.println();
 
 
@@ -128,13 +128,31 @@ void loop()
     float percentageFL = (forceFL / totalForce) * 100.0;
     float percentageFR = (forceFR / totalForce) * 100.0;
     float percentageH = (forceH / totalForce) * 100.0;
-    Serial.println("Percentage FL: " + String(percentageFL) + " %");
-    Serial.println("Percentage FR: " + String(percentageFR) + " %");
-    Serial.println("Percentage H: " + String(percentageH) + " %");
+
+    Serial.print("PRESSURE:");
+    Serial.print((int)percentageL_FL);
+    Serial.print(",");
+
+    Serial.print((int)percentageL_FR);
+    Serial.print(",");
+
+    Serial.print((int)percentageL_H);
+    Serial.print(",");
+
+    Serial.print((int)percentageR_FL);
+    Serial.print(",");
+
+    Serial.print((int)percentageR_FR);
+    Serial.print(",");
+    Serial.println((int)percentageR_H);
+
+//     Serial.println("Percentage FL: " + String(percentageFL) + " %");
+//     Serial.println("Percentage FR: " + String(percentageFR) + " %");
+//     Serial.println("Percentage H: " + String(percentageH) + " %");
 
     //calculate the total weight on the three fsrs based on the total amount of force detected and the percentage on each fsr
     float totalWeight = (forceFL + forceFR + forceH) / 1000.0; // Convert from grams to kilograms
-    Serial.println("Total weight: " + String(totalWeight) + " kg\n");
+//    Serial.println("Total weight: " + String(totalWeight) + " kg\n");
 
     delay(500);
   }
