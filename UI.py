@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from PySide6.QtCore import QTimer, Qt, QRectF
+from PySide6.QtCore import QTimer, Qt, QRectF, QPointF
 from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QBrush, QPen
 from PySide6.QtWidgets import (
     QMainWindow, QWidget,
@@ -63,7 +63,7 @@ class SquatUI(QMainWindow):
         self.timestamp = 0
         self.arduino = arduino
         # ---- Camera ----
-        self.cam = cv2.VideoCapture(1)
+        self.cam = cv2.VideoCapture(0)
 
         # ---- MediaPipe ----
         base_options = python.BaseOptions(
@@ -228,6 +228,10 @@ class SquatUI(QMainWindow):
 
         with result_lock:
             result = latest_result
+
+        # update pressure section
+        self.pressure_widget.set_values(self.arduino.left_pressure, self.arduino.right_pressure)
+
         if result is None:
             self.display_frame(frame)
             return
@@ -264,8 +268,7 @@ class SquatUI(QMainWindow):
 
         self.display_frame(frame)
 
-        # update pressure section
-        self.pressure_widget.set_values(self.arduino.left_pressure, self.arduino.right_pressure)
+
 
     # ----------------- Opencv frame to Qt -----------------
     def display_frame(self, frame):
@@ -288,11 +291,11 @@ class PressureWidget(QWidget):
     def __init__(self):
         super().__init__()
 
-        # values 0-1023 from arduino
+        # % from arduino
         self.left = [0, 0, 0]   # [front_left, front_right, heel]
         self.right = [0, 0, 0]
 
-        self.setMinimumSize(230, 250)
+        self.setMinimumSize(420, 250)
 
     def set_values(self, left, right):
         self.left = left
@@ -300,14 +303,17 @@ class PressureWidget(QWidget):
         self.update()
 
     def color_for_value(self, v):
-        if v < 300:
-            # green
+
+        # balanced pressure
+        if 20 <= v <= 45:
             return QColor(0, 200, 0)
-        elif v < 600:
-            # orange
+
+        # moderate imbalance
+        elif 10 <= v < 20 or 45 < v <= 60:
             return QColor(255, 165, 0)
+
+        # overload / underload
         else:
-            # red
             return QColor(220, 0, 0)
 
     def paintEvent(self, event):
@@ -317,33 +323,95 @@ class PressureWidget(QWidget):
         w = self.width()
         h = self.height()
 
-        foot_w = w * 0.35
-        foot_h = h * 0.7
+        foot_w = w * 0.28
+        foot_h = h * 0.72
 
-        left_x = w * 0.1
-        right_x = w * 0.55
+        left_x = w * 0.12
+        right_x = w * 0.58
         y = h * 0.15
 
         self.draw_foot(painter, left_x, y, foot_w, foot_h, self.left)
         self.draw_foot(painter, right_x, y, foot_w, foot_h, self.right)
 
     def draw_foot(self, painter, x, y, w, h, values):
+
         # outline
-        painter.setPen(QPen(QColor(200, 200, 200), 2))
-        painter.drawRoundedRect(QRectF(x, y, w, h), 30, 30)
+        painter.setPen(QPen(QColor(180, 180, 180), 2))
+        painter.setBrush(Qt.NoBrush)
 
-        # zones
-        front_h = h * 0.45
-        heel_h = h * 0.35
+        foot_rect = QRectF(x, y, w, h)
+        painter.drawRoundedRect(foot_rect, 60, 60)
 
-        # front left
-        painter.setBrush(QBrush(self.color_for_value(values[0])))
-        painter.drawEllipse(QRectF(x + w*0.1, y + h*0.05, w*0.35, front_h))
+        painter.setPen(Qt.NoPen)
 
-        # front right
-        painter.setBrush(QBrush(self.color_for_value(values[1])))
-        painter.drawEllipse(QRectF(x + w*0.55, y + h*0.05, w*0.35, front_h))
+        ##################################################
+        # FRONT LEFT
+        ##################################################
 
-        # heel
-        painter.setBrush(QBrush(self.color_for_value(values[2])))
-        painter.drawEllipse(QRectF(x + w*0.25, y + h*0.55, w*0.5, heel_h))
+        fl_rect = QRectF(
+            x + w * 0.12,
+            y + h * 0.10,
+            w * 0.28,
+            h * 0.22
+        )
+
+        painter.setBrush(
+            QBrush(self.color_for_value(values[0]))
+        )
+
+        painter.drawEllipse(fl_rect)
+
+        ##################################################
+        # FRONT RIGHT
+        ##################################################
+
+        fr_rect = QRectF(
+            x + w * 0.60,
+            y + h * 0.10,
+            w * 0.28,
+            h * 0.22
+        )
+
+        painter.setBrush(
+            QBrush(self.color_for_value(values[1]))
+        )
+
+        painter.drawEllipse(fr_rect)
+
+        ##################################################
+        # HEEL
+        ##################################################
+
+        heel_rect = QRectF(
+            x + w * 0.28,
+            y + h * 0.58,
+            w * 0.44,
+            h * 0.20
+        )
+
+        painter.setBrush(
+            QBrush(self.color_for_value(values[2]))
+        )
+
+        painter.drawEllipse(heel_rect)
+
+        ##################################################
+        # TEXT LABELS
+        ##################################################
+
+        painter.setPen(QPen(QColor(255, 255, 255)))
+
+        labels = [
+            (fl_rect.center(), values[0]),
+            (fr_rect.center(), values[1]),
+            (heel_rect.center(), values[2]),
+        ]
+
+        for pos, val in labels:
+            painter.drawText(
+                QPointF(
+                    pos.x() - 12,
+                    pos.y() + 5
+                ),
+                f"{int(val)}%"
+            )

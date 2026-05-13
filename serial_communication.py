@@ -63,8 +63,8 @@ class SerialController:
         elif msg.startswith("PRESSURE:"):
             vals = list(map(int, msg.split(":")[1].split(",")))
             # left foot 3 sensors, right foot 3 sensors
-            self.left_pressure = vals[:3]
             self.right_pressure = vals[3:]
+            self.left_pressure = vals[:3]
 
         elif msg.startswith("REP_OK"):
             parts = msg.split(",")
