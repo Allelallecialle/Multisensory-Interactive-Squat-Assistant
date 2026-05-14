@@ -298,21 +298,28 @@ class PressureWidget(QWidget):
         self.setMinimumSize(420, 250)
 
     def set_values(self, left, right):
+         # DEBUG
+        if len(left) != 3:
+            left = [0, 0, 0]
+            #print("Error on left foot")
+        if len(right) != 3:
+            right = [0, 0, 0]
+            #print("Error on right foot")
+
         self.left = left
         self.right = right
+
         self.update()
 
     def color_for_value(self, v):
 
-        # balanced pressure
+        # GREEN with balanced pressure
         if 20 <= v <= 45:
             return QColor(0, 200, 0)
-
-        # moderate imbalance
+        # ORANGE with moderate pressure
         elif 10 <= v < 20 or 45 < v <= 60:
             return QColor(255, 165, 0)
-
-        # overload / underload
+        # RED with weight overload/underload
         else:
             return QColor(220, 0, 0)
 
@@ -334,8 +341,7 @@ class PressureWidget(QWidget):
         self.draw_foot(painter, right_x, y, foot_w, foot_h, self.right)
 
     def draw_foot(self, painter, x, y, w, h, values):
-
-        # outline
+        # external shape
         painter.setPen(QPen(QColor(180, 180, 180), 2))
         painter.setBrush(Qt.NoBrush)
 
@@ -344,63 +350,44 @@ class PressureWidget(QWidget):
 
         painter.setPen(Qt.NoPen)
 
-        ##################################################
-        # FRONT LEFT
-        ##################################################
-
+        # Left front foot draw
         fl_rect = QRectF(
             x + w * 0.12,
             y + h * 0.10,
             w * 0.28,
             h * 0.22
         )
-
         painter.setBrush(
             QBrush(self.color_for_value(values[0]))
         )
-
         painter.drawEllipse(fl_rect)
 
-        ##################################################
-        # FRONT RIGHT
-        ##################################################
-
+        # Right front foot draw
         fr_rect = QRectF(
             x + w * 0.60,
             y + h * 0.10,
             w * 0.28,
             h * 0.22
         )
-
         painter.setBrush(
             QBrush(self.color_for_value(values[1]))
         )
-
         painter.drawEllipse(fr_rect)
 
-        ##################################################
-        # HEEL
-        ##################################################
-
+        # Heel draw
         heel_rect = QRectF(
             x + w * 0.28,
             y + h * 0.58,
             w * 0.44,
             h * 0.20
         )
-
         painter.setBrush(
             QBrush(self.color_for_value(values[2]))
         )
-
         painter.drawEllipse(heel_rect)
 
-        ##################################################
-        # TEXT LABELS
-        ##################################################
-
+        # labels with % draw
         painter.setPen(QPen(QColor(255, 255, 255)))
-
         labels = [
             (fl_rect.center(), values[0]),
             (fr_rect.center(), values[1]),

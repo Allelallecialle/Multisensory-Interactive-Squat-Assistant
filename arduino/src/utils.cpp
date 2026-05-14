@@ -470,7 +470,7 @@ void setSquatStateMediapipe(){
 
 /** Pressure sensors ************************************************************************************************/
 
-void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
+String readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
 
   pinMode(FL, INPUT);
   pinMode(FR, INPUT);
@@ -533,13 +533,10 @@ void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
 //     Serial.println("Percentage H: " + String(percentageH) + " %\r");
 //     Serial.println("Percentage FR: " + String(percentageFR) + " %\r");
 
-    Serial.print((int)percentageFL);
-    Serial.print(",");
-    Serial.print((int)percentageFR);
-    Serial.print(",");
-    Serial.print((int)percentageH);
+    String values = String((int)percentageFL) + "," + String((int)percentageFR) + "," + String((int)percentageH);
 
     delay(500); // Delay to avoid flooding the serial output
+    return values;
 
   // }
 

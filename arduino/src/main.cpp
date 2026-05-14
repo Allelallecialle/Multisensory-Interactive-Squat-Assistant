@@ -63,9 +63,13 @@ void loop(){
 
     receive_message();
 
+    String leftValues = readPressureSensors(14, 15, 16, "LEFT");
+    String rightValues = readPressureSensors(23, 22, 21, "RIGHT");
+
     Serial.print("PRESSURE:");
-    readPressureSensors(14, 15, 16, "RIGHT");
-    readPressureSensors(23, 22, 21, "LEFT");
+    Serial.print(leftValues);
+    Serial.print(",");
+    Serial.println(rightValues);
 
     analog_digital_loop();
 }
