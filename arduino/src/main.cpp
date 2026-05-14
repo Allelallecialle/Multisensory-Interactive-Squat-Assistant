@@ -38,10 +38,10 @@ void setup(){
   /* Initialise the IMU BNO055 sensors. bno_1 is on Wire (SCL0/SDA0 = pins 19/18),
      bno_2 is on Wire2 (SCL2/SDA2 = pins 3/4). See config.cpp. */
   delay(1000);
-//   if (!bno_1.begin()){
-//     Serial.print("Ooops, no BNO055 1 detected ... Check your wiring or I2C ADDR!");
-//     while (1);
-//   }
+  if (!bno_1.begin()){
+    Serial.print("Ooops, no BNO055 1 detected ... Check your wiring or I2C ADDR!");
+    while (1);
+  }
   if (!bno_2.begin()){
     Serial.print("Ooops, no BNO055 2 detected ... Check your wiring or I2C ADDR!");
     while (1);
@@ -54,7 +54,7 @@ void setup(){
   long bnoID_2 = 2;
 
 
-//   calibrateIMU(bno_1, eeAddress_1, bnoID_1);
+  calibrateIMU(bno_1, eeAddress_1, bnoID_1);
   calibrateIMU(bno_2, eeAddress_2, bnoID_2);
 
 }

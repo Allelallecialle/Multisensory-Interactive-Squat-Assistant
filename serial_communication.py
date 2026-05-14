@@ -59,7 +59,6 @@ class SerialController:
             print(f"SQUATSTATE: {self.is_squatting}")
             send_to_puredata("SQUATSTATE", self.is_squatting)
 
-        #TODO implement pressure data handling for UI
         elif msg.startswith("PRESSURE:"):
             vals = list(map(int, msg.split(":")[1].split(",")))
             # left foot 3 sensors, right foot 3 sensors

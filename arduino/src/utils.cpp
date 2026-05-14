@@ -27,10 +27,10 @@ void analog_digital_loop() {
     if (micros() - BNO055_last_read >= BNO055_PERIOD_MICROSECS) {
         BNO055_last_read += BNO055_PERIOD_MICROSECS;
 
-//         sensors_event_t orientationData1, angVelData1, linearAccelData1;
-//         bno_1.getEvent(&orientationData1, Adafruit_BNO055::VECTOR_EULER);
-//         bno_1.getEvent(&angVelData1, Adafruit_BNO055::VECTOR_GYROSCOPE);
-//         bno_1.getEvent(&linearAccelData1, Adafruit_BNO055::VECTOR_LINEARACCEL);
+        sensors_event_t orientationData1, angVelData1, linearAccelData1;
+        bno_1.getEvent(&orientationData1, Adafruit_BNO055::VECTOR_EULER);
+        bno_1.getEvent(&angVelData1, Adafruit_BNO055::VECTOR_GYROSCOPE);
+        bno_1.getEvent(&linearAccelData1, Adafruit_BNO055::VECTOR_LINEARACCEL);
 
         sensors_event_t orientationData2, angVelData2, linearAccelData2;
         bno_2.getEvent(&orientationData2, Adafruit_BNO055::VECTOR_EULER);

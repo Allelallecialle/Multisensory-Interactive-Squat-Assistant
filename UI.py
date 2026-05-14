@@ -312,7 +312,6 @@ class PressureWidget(QWidget):
         self.update()
 
     def color_for_value(self, v):
-
         # GREEN with balanced pressure
         if 20 <= v <= 45:
             return QColor(0, 200, 0)
