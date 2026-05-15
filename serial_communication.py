@@ -54,10 +54,10 @@ class SerialController:
 
     def parse_message(self, msg):
         print("PARSING:", msg)
-        if msg.startswith("SQUATSTATE"):
-            self.is_squatting = bool(int(msg.split(",")[1]))
+        if msg.startswith("SQUATSTATE:"):
+            self.is_squatting = bool(int(msg.split(":")[1]))
             print(f"SQUATSTATE: {self.is_squatting}")
-            send_to_puredata("SQUATSTATE", self.is_squatting)
+            #send_to_puredata("SQUATSTATE", self.is_squatting)
 
         elif msg.startswith("PRESSURE:"):
             vals = list(map(int, msg.split(":")[1].split(",")))
@@ -73,12 +73,12 @@ class SerialController:
                 print(f"Rep {current}/{total}")
                 self.current_reps = current
                 self.rep_completed = True
-                send_to_puredata("rep_reward", 1)
+                #send_to_puredata("rep_reward", 1)
 
         elif msg == "SET_OK":
             self.set_completed = True
             print("Set completed")
-            send_to_puredata("set_reward", 1)
+            #send_to_puredata("set_reward", 1)
 
     # ----------------- Send to arduino -----------------
     def send(self, msg):
@@ -103,12 +103,12 @@ class SerialController:
     def send_wrist_unbalanced(self, unbalanced: bool):
         self.send(f"WRIST_UNBALANCED,{int(unbalanced)}")
         # send signal to puredata
-        send_to_puredata("wrists", unbalanced)
+        #send_to_puredata("wrists", unbalanced)
 
     def send_knee_valgus(self, valgus: bool):
         self.send(f"KNEE_VALGUS,{int(valgus)}")
         #send signal to puredata
-        send_to_puredata("knees", valgus)
+        #send_to_puredata("knees", valgus)
 
     def send_startup_UI(self):
         self.send(f"INITIALIZE")

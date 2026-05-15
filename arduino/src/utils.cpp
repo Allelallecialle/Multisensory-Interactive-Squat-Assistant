@@ -53,6 +53,7 @@ void analog_digital_loop() {
         // Perform the user calibration pose. When the user is in the correct squat position, press the SPACE key to set the current pose angles
         if (!userPoseCalibrated) {
             setUserPose();
+            delay(2000);
             return;
           } 
           
@@ -442,28 +443,68 @@ void setSquatStateMediapipe(){
 
   bool squatDetected = detectSquatFromIMUs(imu1, imu2);
 
-  if (squatDetected && !isSquatting) {
-    if (squatStateStart == 0){
-      squatStateStart = millis();
-    }
+//   if (squatDetected && !isSquatting) {
+//     if (squatStateStart == 0){
+//       squatStateStart = millis();
+//     }
+//
+//     if (millis() - squatStateStart > SQUAT_MIN_TIME) {
+//       isSquatting = true;
+//       Serial.println("SQUATSTATE:1");  //is squatting
+//     }
+//   } else if (!squatDetected && isSquatting) {
+//     if squatDetected {
+//       isSquatting = false;
+//       squatStateStart = 0;
+//       Serial.println("SQUATSTATE:0");  //is not squatting
+//     }
+//   } else {
+//     squatStateStart = 0;
+//   }
+//
+   // checking squat state
+  if (!isSquatting) {
+    if (squatDetected) {
+      // start timer
+      if (squatStateStart == 0) {
+        squatStateStart = millis();
+      }
 
-    if (millis() - squatStateStart > SQUAT_MIN_TIME) {
-      isSquatting = true;
-      Serial.println("SQUATSTATE,1");  //is squatting
-    }
-  } else if (!squatDetected && isSquatting) {
-    float delta1 = abs(imu1[1] - refIMU1[1]);
-    float delta2 = abs(imu2[1] - refIMU2[1]);
+      // stable squat entry detected
+      if (millis() - squatStateStart >= SQUAT_MIN_TIME) {
+        isSquatting = true; // set squatting state
+        squatStateStart = 0; // start time counting to check if it's a valid rep
+        Serial.println("SQUATSTATE:1");
+      }
 
-    if (delta1 < SQUAT_EXIT_THRESHOLD &&
-        delta2 < SQUAT_EXIT_THRESHOLD) {
-
-      isSquatting = false;
+    } else {
+      // cancel entry in squat state if timing is not respected
       squatStateStart = 0;
-      Serial.println("SQUATSTATE,0");  //is not squatting
     }
-  } else {
-    squatStateStart = 0;
+  }
+
+  // checking exit squat state
+  else {
+    float delta1 = abs(imu1[1] - refIMU1[1]); // Y plane
+    float delta2 = abs(imu2[1] - refIMU2[1]);
+    bool standingDetected = (delta1 < SQUAT_EXIT_THRESHOLD && delta2 < SQUAT_EXIT_THRESHOLD);
+
+    if (standingDetected) {
+      if (squatStateStart == 0) {
+        squatStateStart = millis();
+      }
+
+      // stable standing detected
+      if (millis() - squatStateStart >= SQUAT_MIN_TIME) {
+        isSquatting = false;
+        squatStateStart = 0;
+        Serial.println("SQUATSTATE:0");
+      }
+
+    } else {
+      // still squatting but reset timer
+      squatStateStart = 0;
+    }
   }
 
 }
