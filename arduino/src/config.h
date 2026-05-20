@@ -49,13 +49,15 @@ extern int digital_input2_last_button_state;
 
 extern const uint16_t digital_output0_pin;
 extern const uint16_t digital_output1_pin;
-extern const uint16_t digital_output2_pin;
+// extern const uint16_t digital_output2_pin;
 extern const uint16_t digital_output3_pin;
-extern const uint16_t digital_output4_pin;
-extern int digital_output0_LED_state;
-extern int digital_output1_LED_state;
-extern int digital_output2_LED_state;
+// extern const uint16_t digital_output4_pin;
+// extern int digital_output0_LED_state;
+// extern int digital_output1_LED_state;
+// extern int digital_output2_LED_state;
 
+#define NUM_MOTORS 8
+extern uint16_t motor_pins[NUM_MOTORS];
 
 extern unsigned long digital_input0_last_debounce_time;  
 extern unsigned long digital_input1_last_debounce_time;  

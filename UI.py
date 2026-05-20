@@ -1,6 +1,6 @@
 import time
 import numpy as np
-from PySide6.QtCore import QTimer, Qt, QRectF
+from PySide6.QtCore import QTimer, Qt, QRectF, QPointF
 from PySide6.QtGui import QImage, QPixmap, QPainter, QColor, QBrush, QPen
 from PySide6.QtWidgets import (
     QMainWindow, QWidget,
@@ -50,7 +50,7 @@ def barbell_bad_form(landmarks):
     #     return False
 
     LW, RW = 15, 16
-    return abs(landmarks[LW].y - landmarks[RW].y) > 0.03
+    return abs(landmarks[LW].y - landmarks[RW].y) > 0.05
 
 
 # ----------------- Qt Main Window -----------------
@@ -63,7 +63,7 @@ class SquatUI(QMainWindow):
         self.timestamp = 0
         self.arduino = arduino
         # ---- Camera ----
-        self.cam = cv2.VideoCapture(1)
+        self.cam = cv2.VideoCapture(2)
 
         # ---- MediaPipe ----
         base_options = python.BaseOptions(
@@ -100,6 +100,17 @@ class SquatUI(QMainWindow):
         self.reps_spin.setRange(1, 20)
         self.reps_spin.setValue(10)
 
+        # cached last-sent values — only send on transition to avoid flooding Arduino serial
+        self.last_valgus_sent = None
+        self.last_wrist_sent = None
+        # timestamp when valgus first became True in the current run; None when not in valgus
+        self.valgus_true_start = None
+        # asymmetric debounce timers for the wrist signal
+        self.wrist_true_start = None   # set while raw unbalanced is True
+        self.wrist_false_start = None  # set while raw unbalanced is False
+        self.WRIST_MIN_DURATION = 0.5  # seconds (off to on)
+        self.WRIST_OFF_DURATION = 0.3  # seconds (on to off)
+        
         controls = QVBoxLayout()
         controls.addStretch()
         controls.addWidget(self.save_btn)
@@ -228,6 +239,10 @@ class SquatUI(QMainWindow):
 
         with result_lock:
             result = latest_result
+
+        # update pressure section
+        self.pressure_widget.set_values(self.arduino.left_pressure, self.arduino.right_pressure)
+
         if result is None:
             self.display_frame(frame)
             return
@@ -237,35 +252,56 @@ class SquatUI(QMainWindow):
             annotated = draw_landmarks_on_image(frame.copy(), result)
 
             #check valgus knees only if the arduino sends that the user is actually squatting
-            if self.arduino.is_squatting:
+            # if self.arduino.is_squatting:
                 #print("squatting")
-                valgus = check_knee_valgus(landmarks, w, h)
-                if valgus:
-                    overlay = annotated.copy()
-                    overlay[:] = (0, 0, 255)
-                    annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
-                    cv2.putText(
-                        annotated, "KNEE VALGUS", (30, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                    )
+            valgus = check_knee_valgus(landmarks, w, h)
+            if valgus:
+                overlay = annotated.copy()
+                overlay[:] = (0, 0, 255)
+                annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
+                cv2.putText(
+                    annotated, "KNEE VALGUS", (30, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                )
+                # self.arduino.send_knee_valgus(valgus)
 
-                unbalanced_wrists = barbell_bad_form(landmarks)
-                if unbalanced_wrists:
-                    cv2.putText(
-                        annotated, "BARBELL OUT OF BALANCE", (30, 80),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                    )
-                #send serial boolean for barbell balance: 1 if unbalanced, 0 balanced
-                self.arduino.send_wrist_unbalanced(unbalanced_wrists)
-                # send serial boolean for valgus knees: 1 if valgus, 0 ok
-                self.arduino.send_knee_valgus(valgus)
+            unbalanced_wrists = barbell_bad_form(landmarks)
+            if unbalanced_wrists:
+                cv2.putText(
+                    annotated, "BARBELL OUT OF BALANCE", (30, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                )
+            # asymmetric debounce: raw unbalanced must be held True for
+            # >= WRIST_MIN_DURATION before we send True, and held False for
+            # >= WRIST_OFF_DURATION before we send False.
+            now = time.time()
+            current_wrist = bool(self.last_wrist_sent)
+            if unbalanced_wrists:
+                self.wrist_false_start = None
+                if self.wrist_true_start is None:
+                    self.wrist_true_start = now
+                if not current_wrist and (now - self.wrist_true_start) >= self.WRIST_MIN_DURATION:
+                    wrist_debounced = True
+                else:
+                    wrist_debounced = current_wrist
+            else:
+                self.wrist_true_start = None
+                if self.wrist_false_start is None:
+                    self.wrist_false_start = now
+                if current_wrist and (now - self.wrist_false_start) >= self.WRIST_OFF_DURATION:
+                    wrist_debounced = False
+                else:
+                    wrist_debounced = current_wrist
+
+            if wrist_debounced != self.last_wrist_sent:
+                self.arduino.send_wrist_unbalanced(wrist_debounced)
+                self.last_wrist_sent = wrist_debounced
 
             frame = annotated
 
         self.display_frame(frame)
 
-        # update pressure section
-        self.pressure_widget.set_values(self.arduino.left_pressure, self.arduino.right_pressure)
+
 
     # ----------------- Opencv frame to Qt -----------------
     def display_frame(self, frame):
@@ -288,26 +324,35 @@ class PressureWidget(QWidget):
     def __init__(self):
         super().__init__()
 
-        # values 0-1023 from arduino
+        # % from arduino
         self.left = [0, 0, 0]   # [front_left, front_right, heel]
         self.right = [0, 0, 0]
 
-        self.setMinimumSize(230, 250)
+        self.setMinimumSize(420, 250)
 
     def set_values(self, left, right):
+         # DEBUG
+        if len(left) != 3:
+            left = [0, 0, 0]
+            #print("Error on left foot")
+        if len(right) != 3:
+            right = [0, 0, 0]
+            #print("Error on right foot")
+
         self.left = left
         self.right = right
+
         self.update()
 
     def color_for_value(self, v):
-        if v < 300:
-            # green
+        # GREEN with balanced pressure
+        if 20 <= v <= 45:
             return QColor(0, 200, 0)
-        elif v < 600:
-            # orange
+        # ORANGE with moderate pressure
+        elif 10 <= v < 20 or 45 < v <= 60:
             return QColor(255, 165, 0)
+        # RED with weight overload/underload
         else:
-            # red
             return QColor(220, 0, 0)
 
     def paintEvent(self, event):
@@ -317,33 +362,75 @@ class PressureWidget(QWidget):
         w = self.width()
         h = self.height()
 
-        foot_w = w * 0.35
-        foot_h = h * 0.7
+        foot_w = w * 0.28
+        foot_h = h * 0.72
 
-        left_x = w * 0.1
-        right_x = w * 0.55
+        left_x = w * 0.12
+        right_x = w * 0.58
         y = h * 0.15
 
         self.draw_foot(painter, left_x, y, foot_w, foot_h, self.left)
         self.draw_foot(painter, right_x, y, foot_w, foot_h, self.right)
 
     def draw_foot(self, painter, x, y, w, h, values):
-        # outline
-        painter.setPen(QPen(QColor(200, 200, 200), 2))
-        painter.drawRoundedRect(QRectF(x, y, w, h), 30, 30)
+        # external shape
+        painter.setPen(QPen(QColor(180, 180, 180), 2))
+        painter.setBrush(Qt.NoBrush)
 
-        # zones
-        front_h = h * 0.45
-        heel_h = h * 0.35
+        foot_rect = QRectF(x, y, w, h)
+        painter.drawRoundedRect(foot_rect, 60, 60)
 
-        # front left
-        painter.setBrush(QBrush(self.color_for_value(values[0])))
-        painter.drawEllipse(QRectF(x + w*0.1, y + h*0.05, w*0.35, front_h))
+        painter.setPen(Qt.NoPen)
 
-        # front right
-        painter.setBrush(QBrush(self.color_for_value(values[1])))
-        painter.drawEllipse(QRectF(x + w*0.55, y + h*0.05, w*0.35, front_h))
+        # Left front foot draw
+        fl_rect = QRectF(
+            x + w * 0.12,
+            y + h * 0.10,
+            w * 0.28,
+            h * 0.22
+        )
+        painter.setBrush(
+            QBrush(self.color_for_value(values[0]))
+        )
+        painter.drawEllipse(fl_rect)
 
-        # heel
-        painter.setBrush(QBrush(self.color_for_value(values[2])))
-        painter.drawEllipse(QRectF(x + w*0.25, y + h*0.55, w*0.5, heel_h))
+        # Right front foot draw
+        fr_rect = QRectF(
+            x + w * 0.60,
+            y + h * 0.10,
+            w * 0.28,
+            h * 0.22
+        )
+        painter.setBrush(
+            QBrush(self.color_for_value(values[1]))
+        )
+        painter.drawEllipse(fr_rect)
+
+        # Heel draw
+        heel_rect = QRectF(
+            x + w * 0.28,
+            y + h * 0.58,
+            w * 0.44,
+            h * 0.20
+        )
+        painter.setBrush(
+            QBrush(self.color_for_value(values[2]))
+        )
+        painter.drawEllipse(heel_rect)
+
+        # labels with % draw
+        painter.setPen(QPen(QColor(255, 255, 255)))
+        labels = [
+            (fl_rect.center(), values[0]),
+            (fr_rect.center(), values[1]),
+            (heel_rect.center(), values[2]),
+        ]
+
+        for pos, val in labels:
+            painter.drawText(
+                QPointF(
+                    pos.x() - 12,
+                    pos.y() + 5
+                ),
+                f"{int(val)}%"
+            )

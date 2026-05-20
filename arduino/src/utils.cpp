@@ -53,6 +53,7 @@ void analog_digital_loop() {
         // Perform the user calibration pose. When the user is in the correct squat position, press the SPACE key to set the current pose angles
         if (!userPoseCalibrated) {
             setUserPose();
+            delay(2000);
             return;
           } 
           
@@ -61,7 +62,7 @@ void analog_digital_loop() {
             if (!setConfigured) {
             squatSeriesCounter();
             } else {
-            setSquatStateMediapipe();
+            // setSquatStateMediapipe();
             checkCorrectPoseAndReward();
             }
           }
@@ -315,6 +316,87 @@ bool checkPoseTolerance(float curr[3], float ref[3]) {
 }
 
 // function to check squat repetitions. Use the above functions defined
+void checkCorrectPoseAndReward_old() {
+  if (lastCommand == CMD_QUIT) {
+    lastCommand = CMD_NONE;
+
+    setConfigured = false;
+    squat_counter = 0;
+    repLocked = false;
+    poseStableStart = 0;
+
+    return;
+  }
+
+  if (!setConfigured) {
+    return;   //wait until the number of desired reps are set
+  }
+
+  // Count a rep once the user has reached squat depth (isSquatting set by
+  // setSquatStateMediapipe — Y-axis hysteresis, robust to X/Z drift) and held
+  // it for POSE_STABLE_TIME. repLocked clears when they exit the squat so the
+  // next descent can count again.
+  if (isSquatting && !repLocked) {
+
+    if (poseStableStart == 0) {
+      poseStableStart = millis();
+    }
+
+    if (millis() - poseStableStart >= POSE_STABLE_TIME) {
+      squat_counter++;
+      repLocked = true;
+
+      Serial.print("REP_OK,");
+      Serial.print(squat_counter);
+      Serial.print(",");
+      Serial.println(repetitions_to_achieve);
+
+      if (squat_counter >= repetitions_to_achieve) {
+
+        Serial.println("SET_OK");
+
+        setConfigured = false;
+        squat_counter = 0;
+        repLocked = false;
+        poseStableStart = 0;
+        return;
+      }
+
+      poseStableStart = 0;
+    }
+
+  } else if (!isSquatting) {
+    poseStableStart = 0;
+    repLocked = false;
+  }
+}
+
+void squatSeriesCounter() {
+  //static bool prompted = false;
+  
+  if (setConfigured){
+    Serial.println("setConfigured:");
+    Serial.println(setConfigured);
+    return;
+  }
+
+  if (lastCommand == CMD_NUMBER) {
+    int n = lastNumber;
+    lastCommand = CMD_NONE;
+    lastNumber = -1;
+
+    if (n >= 1 && n <= 15) {
+      repetitions_to_achieve = n;
+      squat_counter = 0;
+      setConfigured = true;
+      //prompted = false;
+      Serial.println("setConfigured:");
+      Serial.println(setConfigured);
+      Serial.println("Repetitions desired saved on arduino");
+    }
+  }
+}
+// function to check squat repetitions. Use the above functions defined
 void checkCorrectPoseAndReward() {
   if (lastCommand == CMD_QUIT) {
     lastCommand = CMD_NONE;
@@ -368,35 +450,9 @@ void checkCorrectPoseAndReward() {
       poseStableStart = 0;
     }
 
-  } else {
+  } else if (!imu1_ok || !imu2_ok) {
     poseStableStart = 0;
     repLocked = false;
-  }
-}
-
-void squatSeriesCounter() {
-  //static bool prompted = false;
-  
-  if (setConfigured){
-    Serial.println("setConfigured:");
-    Serial.println(setConfigured);
-    return;
-  }
-
-  if (lastCommand == CMD_NUMBER) {
-    int n = lastNumber;
-    lastCommand = CMD_NONE;
-    lastNumber = -1;
-
-    if (n >= 1 && n <= 15) {
-      repetitions_to_achieve = n;
-      squat_counter = 0;
-      setConfigured = true;
-      //prompted = false;
-      Serial.println("setConfigured:");
-      Serial.println(setConfigured);
-      Serial.println("Repetitions desired saved on arduino");
-    }
   }
 }
 
@@ -425,13 +481,16 @@ void setUserPose() {
   }
 }
 
-// function to detect if the user is squatting 
+// Reference = the squat-depth pose captured in setUserPose(). The user is
+// "squatting" when their current Y angles are CLOSE to that reference on both
+// IMUs. Hysteresis: enter at small delta (SQUAT_EXIT_THRESHOLD), exit only
+// after moving clearly away (SQUAT_ANGLE_THRESHOLD).
 bool detectSquatFromIMUs(float imu1[3], float imu2[3]) {
   float delta1 = abs(imu1[1] - refIMU1[1]); // Y plane
   float delta2 = abs(imu2[1] - refIMU2[1]);
 
-  return (delta1 > SQUAT_ANGLE_THRESHOLD ||
-          delta2 > SQUAT_ANGLE_THRESHOLD);
+  return (delta1 < SQUAT_EXIT_THRESHOLD &&
+          delta2 < SQUAT_EXIT_THRESHOLD);
 }
 
 // function to call in the loop() that sets the bool to send to mediapipe
@@ -442,35 +501,76 @@ void setSquatStateMediapipe(){
 
   bool squatDetected = detectSquatFromIMUs(imu1, imu2);
 
-  if (squatDetected && !isSquatting) {
-    if (squatStateStart == 0){
-      squatStateStart = millis();
-    }
+//   if (squatDetected && !isSquatting) {
+//     if (squatStateStart == 0){
+//       squatStateStart = millis();
+//     }
+//
+//     if (millis() - squatStateStart > SQUAT_MIN_TIME) {
+//       isSquatting = true;
+//       Serial.println("SQUATSTATE:1");  //is squatting
+//     }
+//   } else if (!squatDetected && isSquatting) {
+//     if squatDetected {
+//       isSquatting = false;
+//       squatStateStart = 0;
+//       Serial.println("SQUATSTATE:0");  //is not squatting
+//     }
+//   } else {
+//     squatStateStart = 0;
+//   }
+//
+   // checking squat state
+  if (!isSquatting) {
+    if (squatDetected) {
+      // start timer
+      if (squatStateStart == 0) {
+        squatStateStart = millis();
+      }
 
-    if (millis() - squatStateStart > SQUAT_MIN_TIME) {
-      isSquatting = true;
-      Serial.println("SQUATSTATE,1");  //is squatting
-    }
-  } else if (!squatDetected && isSquatting) {
-    float delta1 = abs(imu1[1] - refIMU1[1]);
-    float delta2 = abs(imu2[1] - refIMU2[1]);
+      // stable squat entry detected
+      if (millis() - squatStateStart >= SQUAT_MIN_TIME) {
+        isSquatting = true; // set squatting state
+        squatStateStart = 0; // start time counting to check if it's a valid rep
+        Serial.println("SQUATSTATE:1");
+      }
 
-    if (delta1 < SQUAT_EXIT_THRESHOLD &&
-        delta2 < SQUAT_EXIT_THRESHOLD) {
-
-      isSquatting = false;
+    } else {
+      // cancel entry in squat state if timing is not respected
       squatStateStart = 0;
-      Serial.println("SQUATSTATE,0");  //is not squatting
     }
-  } else {
-    squatStateStart = 0;
+  }
+
+  // checking exit squat state — user has moved clearly away from the squat-
+  // depth reference on either IMU (hysteresis vs. the enter threshold above).
+  else {
+    float delta1 = abs(imu1[1] - refIMU1[1]); // Y plane
+    float delta2 = abs(imu2[1] - refIMU2[1]);
+    bool standingDetected = (delta1 > SQUAT_ANGLE_THRESHOLD || delta2 > SQUAT_ANGLE_THRESHOLD);
+
+    if (standingDetected) {
+      if (squatStateStart == 0) {
+        squatStateStart = millis();
+      }
+
+      // stable standing detected
+      if (millis() - squatStateStart >= SQUAT_MIN_TIME) {
+        isSquatting = false;
+        squatStateStart = 0;
+        Serial.println("SQUATSTATE:0");
+      }
+
+    } else {
+      // still squatting but reset timer
+      squatStateStart = 0;
+    }
   }
 
 }
 
 /** Pressure sensors ************************************************************************************************/
 
-void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
+String readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
 
   pinMode(FL, INPUT);
   pinMode(FR, INPUT);
@@ -528,12 +628,15 @@ void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name) {
     float percentageH = (forceH / totalForce) * 100.0;
     float percentageFR = (forceFR / totalForce) * 100.0;
     
-    Serial.print(name + " - ");
-    Serial.println("Percentage FL: " + String(percentageFL) + " %\r");
-    Serial.println("Percentage H: " + String(percentageH) + " %\r");
-    Serial.println("Percentage FR: " + String(percentageFR) + " %\r");
+//     Serial.print(name + " - ");
+//     Serial.println("Percentage FL: " + String(percentageFL) + " %\r");
+//     Serial.println("Percentage H: " + String(percentageH) + " %\r");
+//     Serial.println("Percentage FR: " + String(percentageFR) + " %\r");
+
+    String values = String((int)percentageFL) + "," + String((int)percentageFR) + "," + String((int)percentageH);
 
     delay(500); // Delay to avoid flooding the serial output
+    return values;
 
   // }
 
@@ -645,4 +748,57 @@ void handle_received_message(char *received_message) {
     return;
   }
 
+  // // Dispatch motorN_pattern1 (N = 1..NUM_MOTORS) to motor_pins[N-1].
+  // if (strncmp(all_tokens[0], "motor", 5) == 0 && all_tokens[1] != NULL) {
+  //   char *end_num;
+  //   long n = strtol(all_tokens[0] + 5, &end_num, 10);
+  //   if (end_num > all_tokens[0] + 5 && n >= 1 && n <= NUM_MOTORS &&
+  //       strcmp(end_num, "_pattern1") == 0) {
+  //     analogWrite(motor_pins[n - 1], atoi(all_tokens[1]));
+  //     return;
+  //   }
+  // }
+
+  char *command = all_tokens[0]; 
+  char *value = all_tokens[1];
+
+
+  if (strcmp(command,"motor1_pattern1") == 0) {
+
+    /*
+    Serial.print("activating message 1: ");
+    Serial.print(command);
+    Serial.print(" ");
+    Serial.print(value);
+    Serial.println(" ");
+    */
+    
+    analogWrite(digital_output3_pin, atoi(value));
+    
+  }
+
 } 
+// Copies the caller's pin array into motor_pins and initializes each pin
+// as OUTPUT LOW. Call once from main.cpp setup().
+void setup_motors(const uint16_t pins[NUM_MOTORS]) {
+  for (int i = 0; i < NUM_MOTORS; i++) {
+    motor_pins[i] = pins[i];
+    pinMode(motor_pins[i], OUTPUT);
+    digitalWrite(motor_pins[i], LOW);
+  }
+}
+
+// Replicates the serial-streaming behavior of test_motor.cpp.
+// The motor/LED commands (motor1_pattern1, LED1_pattern1) and the
+// analog read+filter are already handled by receive_message() /
+// handle_received_message() and analog_digital_loop() respectively,
+// which are called from main.cpp loop(). This function only adds the
+// "print a0 over serial when its filtered value changes" piece that
+// the standalone sketch was doing.
+void test_motor() {
+  if (analog_input0_lp_filtered != previous_analog_input0_lp_filtered) {
+    Serial.print("a0, ");
+    Serial.println(analog_input0_lp_filtered);
+    previous_analog_input0_lp_filtered = analog_input0_lp_filtered;
+  }
+}

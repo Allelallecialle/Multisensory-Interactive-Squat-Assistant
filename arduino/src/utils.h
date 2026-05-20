@@ -73,7 +73,22 @@ bool detectSquatFromIMUs(float imu1[3], float imu2[3]);
 
 void setSquatStateMediapipe();
 
-void readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name);
+String readPressureSensors(uint16_t H, uint16_t FL, uint16_t FR, String name);
+
+/**
+ * Streams analog_input0_lp_filtered over serial as "a0, <value>" whenever
+ * the filtered value changes. Motor/LED PWM (motor1_pattern1, LED1_pattern1)
+ * and the analog read+filter are handled by receive_message() and
+ * analog_digital_loop(); call them in loop() before test_motor().
+ */
+void test_motor();
+
+/**
+ * Copies the caller's NUM_MOTORS-sized pin array into motor_pins and
+ * initializes each pin as OUTPUT LOW. Call once from main.cpp setup().
+ * Pins control motorN_pattern1 via motor_pins[N-1].
+ */
+void setup_motors(const uint16_t pins[NUM_MOTORS]);
 
 #endif
 

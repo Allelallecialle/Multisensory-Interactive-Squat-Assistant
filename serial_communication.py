@@ -3,6 +3,7 @@ import queue
 import serial
 import threading
 
+from puredata_comm import PureDataComm
 import puredata_communication
 
 
@@ -22,7 +23,10 @@ class SerialController:
         self.total_reps = 0
         self.left_pressure = [0, 0, 0]
         self.right_pressure = [0, 0, 0]
+        # gate wrist-to-PD output: only forward after the first REP_OK of a set
+        self.wrists_pd_active = False
         self.write_queue = queue.Queue()
+        self.pd = PureDataComm(["127.0.0.1", 5005, "/motor"], [5006, "/filter"])
 
         self.read_thread = threading.Thread(target=self.read_loop, daemon=True)
         self.write_thread = threading.Thread(target=self.write_loop, daemon=True)
@@ -54,17 +58,16 @@ class SerialController:
 
     def parse_message(self, msg):
         print("PARSING:", msg)
-        if msg.startswith("SQUATSTATE"):
-            self.is_squatting = bool(int(msg.split(",")[1]))
+        if msg.startswith("SQUATSTATE:"):
+            self.is_squatting = bool(int(msg.split(":")[1]))
             print(f"SQUATSTATE: {self.is_squatting}")
-            send_to_puredata("SQUATSTATE", self.is_squatting)
+            #send_to_puredata("SQUATSTATE", self.is_squatting)
 
-        #TODO implement pressure data handling for UI
         elif msg.startswith("PRESSURE:"):
             vals = list(map(int, msg.split(":")[1].split(",")))
             # left foot 3 sensors, right foot 3 sensors
-            self.left_pressure = vals[:3]
             self.right_pressure = vals[3:]
+            self.left_pressure = vals[:3]
 
         elif msg.startswith("REP_OK"):
             parts = msg.split(",")
@@ -74,12 +77,14 @@ class SerialController:
                 print(f"Rep {current}/{total}")
                 self.current_reps = current
                 self.rep_completed = True
-                send_to_puredata("rep_reward", 1)
+                self.wrists_pd_active = True
+                self.pd.talk2pd("/rep", 1)
 
         elif msg == "SET_OK":
             self.set_completed = True
+            self.wrists_pd_active = False
             print("Set completed")
-            send_to_puredata("set_reward", 1)
+            self.pd.talk2pd("/ser", 1)
 
     # ----------------- Send to arduino -----------------
     def send(self, msg):
@@ -92,6 +97,7 @@ class SerialController:
         self.set_completed = False
         self.current_reps = 0
         self.total_reps = 0
+        self.wrists_pd_active = False
         self.send("QUIT")
 
     def set_reps(self, n):
@@ -103,13 +109,14 @@ class SerialController:
 
     def send_wrist_unbalanced(self, unbalanced: bool):
         self.send(f"WRIST_UNBALANCED,{int(unbalanced)}")
-        # send signal to puredata
-        send_to_puredata("wrists", unbalanced)
+        # only forward to PureData once the first rep of the set has been confirmed
+        if self.wrists_pd_active:
+            value = 255 if unbalanced else 0
+            self.pd.talk2pd("/KN", value)
 
     def send_knee_valgus(self, valgus: bool):
         self.send(f"KNEE_VALGUS,{int(valgus)}")
-        #send signal to puredata
-        send_to_puredata("knees", valgus)
+        # PureData trigger for valgus disabled — wrists only for now
 
     def send_startup_UI(self):
         self.send(f"INITIALIZE")
