@@ -115,7 +115,7 @@ class SerialController:
         #send signal to puredata
         #send_to_puredata("knees", valgus)
         value=123 if valgus else 0
-        self.pd.talk2pd("KNR", value)
+        self.pd.talk2pd("/KNR", value)
         # self.pd.talk2pd("KNL", value)
 
     def send_startup_UI(self):

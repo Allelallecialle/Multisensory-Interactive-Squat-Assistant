@@ -332,13 +332,11 @@ void checkCorrectPoseAndReward() {
     return;   //wait until the number of desired reps are set
   }
 
-  float imu1[3], imu2[3];
-  readIMUAngles(imu1, imu2);
-
-  bool imu1_ok = checkPoseTolerance(imu1, refIMU1);
-  bool imu2_ok = checkPoseTolerance(imu2, refIMU2);
-
-  if ((imu1_ok && imu2_ok) && !repLocked) {
+  // Count a rep once the user has reached squat depth (isSquatting set by
+  // setSquatStateMediapipe — Y-axis hysteresis, robust to X/Z drift) and held
+  // it for POSE_STABLE_TIME. repLocked clears when they exit the squat so the
+  // next descent can count again.
+  if (isSquatting && !repLocked) {
 
     if (poseStableStart == 0) {
       poseStableStart = millis();
@@ -346,20 +344,18 @@ void checkCorrectPoseAndReward() {
 
     if (millis() - poseStableStart >= POSE_STABLE_TIME) {
       squat_counter++;
-      repLocked = true;   // lock user pose until exits it
+      repLocked = true;
 
-      // trigger reward sound from puredata -> 1 squat repetition correctly done
-      Serial.print("REP_OK,");    // Message to send to python
+      Serial.print("REP_OK,");
       Serial.print(squat_counter);
       Serial.print(",");
       Serial.println(repetitions_to_achieve);
 
       if (squat_counter >= repetitions_to_achieve) {
 
-        // trigger another puredata reward sound for end of squat set
-        Serial.println("SET_OK");   // Message to send to python
+        Serial.println("SET_OK");
 
-        setConfigured = false;   // allow new set
+        setConfigured = false;
         squat_counter = 0;
         repLocked = false;
         poseStableStart = 0;
@@ -369,7 +365,7 @@ void checkCorrectPoseAndReward() {
       poseStableStart = 0;
     }
 
-  } else {
+  } else if (!isSquatting) {
     poseStableStart = 0;
     repLocked = false;
   }
@@ -426,13 +422,16 @@ void setUserPose() {
   }
 }
 
-// function to detect if the user is squatting 
+// Reference = the squat-depth pose captured in setUserPose(). The user is
+// "squatting" when their current Y angles are CLOSE to that reference on both
+// IMUs. Hysteresis: enter at small delta (SQUAT_EXIT_THRESHOLD), exit only
+// after moving clearly away (SQUAT_ANGLE_THRESHOLD).
 bool detectSquatFromIMUs(float imu1[3], float imu2[3]) {
   float delta1 = abs(imu1[1] - refIMU1[1]); // Y plane
   float delta2 = abs(imu2[1] - refIMU2[1]);
 
-  return (delta1 > SQUAT_ANGLE_THRESHOLD ||
-          delta2 > SQUAT_ANGLE_THRESHOLD);
+  return (delta1 < SQUAT_EXIT_THRESHOLD &&
+          delta2 < SQUAT_EXIT_THRESHOLD);
 }
 
 // function to call in the loop() that sets the bool to send to mediapipe
@@ -483,11 +482,12 @@ void setSquatStateMediapipe(){
     }
   }
 
-  // checking exit squat state
+  // checking exit squat state — user has moved clearly away from the squat-
+  // depth reference on either IMU (hysteresis vs. the enter threshold above).
   else {
     float delta1 = abs(imu1[1] - refIMU1[1]); // Y plane
     float delta2 = abs(imu2[1] - refIMU2[1]);
-    bool standingDetected = (delta1 < SQUAT_EXIT_THRESHOLD && delta2 < SQUAT_EXIT_THRESHOLD);
+    bool standingDetected = (delta1 > SQUAT_ANGLE_THRESHOLD || delta2 > SQUAT_ANGLE_THRESHOLD);
 
     if (standingDetected) {
       if (squatStateStart == 0) {

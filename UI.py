@@ -50,7 +50,7 @@ def barbell_bad_form(landmarks):
     #     return False
 
     LW, RW = 15, 16
-    return abs(landmarks[LW].y - landmarks[RW].y) > 0.03
+    return abs(landmarks[LW].y - landmarks[RW].y) > 0.05
 
 
 # ----------------- Qt Main Window -----------------
@@ -260,9 +260,9 @@ class SquatUI(QMainWindow):
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
                     )
                 #send serial boolean for barbell balance: 1 if unbalanced, 0 balanced
-                self.arduino.send_wrist_unbalanced(unbalanced_wrists)
-                # send serial boolean for valgus knees: 1 if valgus, 0 ok
-                self.arduino.send_knee_valgus(valgus)
+                # self.arduino.send_wrist_unbalanced(unbalanced_wrists)
+                # # send serial boolean for valgus knees: 1 if valgus, 0 ok
+                # self.arduino.send_knee_valgus(valgus)
 
             frame = annotated
 
