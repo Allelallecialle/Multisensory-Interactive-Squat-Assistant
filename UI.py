@@ -23,11 +23,37 @@ def pose_callback(result, output_image, timestamp_ms):
 
 # ----------------- Mediapipe squat functions -----------------
 latest_result = None
+is_squatting = False
+
 def lm_xy(lm, w, h):
     return np.array([lm.x * w, lm.y * h])
 
+def detect_squat_front(landmarks, threshold=0.15):
+    """
+    Detect squat from front view using hip height
+    threshold: smaller -> deeper squat required to detect it
+    """
 
-def check_knee_valgus(landmarks, w, h, threshold=0.90):
+    # hips
+    LH, RH = 23, 24
+    # knees
+    LK, RK = 25, 26
+
+    hip_y = (
+        landmarks[LH].y +
+        landmarks[RH].y
+    ) / 2
+    knee_y = (
+        landmarks[LK].y +
+        landmarks[RK].y
+    ) / 2
+
+    # normalized vertical distance
+    dist = knee_y - hip_y
+
+    return dist < threshold
+
+def check_knee_valgus(landmarks, w, h, is_squatting, threshold=0.90):
     # if not is_squatting:
     #     return False
 
@@ -45,7 +71,7 @@ def check_knee_valgus(landmarks, w, h, threshold=0.90):
     return (knee_dist / ankle_dist) < threshold
 
 
-def barbell_bad_form(landmarks):
+def barbell_bad_form(landmarks, is_squatting):
     # if not is_squatting:
     #     return False
 
@@ -254,48 +280,50 @@ class SquatUI(QMainWindow):
             #check valgus knees only if the arduino sends that the user is actually squatting
             # if self.arduino.is_squatting:
                 #print("squatting")
-            valgus = check_knee_valgus(landmarks, w, h)
-            if valgus:
-                overlay = annotated.copy()
-                overlay[:] = (0, 0, 255)
-                annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
-                cv2.putText(
-                    annotated, "KNEE VALGUS", (30, 40),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                )
-                # self.arduino.send_knee_valgus(valgus)
+            is_squatting = detect_squat_front(landmarks)
+            if is_squatting:
+                valgus = check_knee_valgus(landmarks, w, h, is_squatting)
+                if valgus:
+                    overlay = annotated.copy()
+                    overlay[:] = (0, 0, 255)
+                    annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
+                    cv2.putText(
+                        annotated, "KNEE VALGUS", (30, 40),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                    )
+                    # self.arduino.send_knee_valgus(valgus)
 
-            unbalanced_wrists = barbell_bad_form(landmarks)
-            if unbalanced_wrists:
-                cv2.putText(
-                    annotated, "BARBELL OUT OF BALANCE", (30, 80),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                )
-            # asymmetric debounce: raw unbalanced must be held True for
-            # >= WRIST_MIN_DURATION before we send True, and held False for
-            # >= WRIST_OFF_DURATION before we send False.
-            now = time.time()
-            current_wrist = bool(self.last_wrist_sent)
-            if unbalanced_wrists:
-                self.wrist_false_start = None
-                if self.wrist_true_start is None:
-                    self.wrist_true_start = now
-                if not current_wrist and (now - self.wrist_true_start) >= self.WRIST_MIN_DURATION:
-                    wrist_debounced = True
+                unbalanced_wrists = barbell_bad_form(landmarks, is_squatting)
+                if unbalanced_wrists:
+                    cv2.putText(
+                        annotated, "BARBELL OUT OF BALANCE", (30, 80),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                    )
+                # asymmetric debounce: raw unbalanced must be held True for
+                # >= WRIST_MIN_DURATION before we send True, and held False for
+                # >= WRIST_OFF_DURATION before we send False.
+                now = time.time()
+                current_wrist = bool(self.last_wrist_sent)
+                if unbalanced_wrists:
+                    self.wrist_false_start = None
+                    if self.wrist_true_start is None:
+                        self.wrist_true_start = now
+                    if not current_wrist and (now - self.wrist_true_start) >= self.WRIST_MIN_DURATION:
+                        wrist_debounced = True
+                    else:
+                        wrist_debounced = current_wrist
                 else:
-                    wrist_debounced = current_wrist
-            else:
-                self.wrist_true_start = None
-                if self.wrist_false_start is None:
-                    self.wrist_false_start = now
-                if current_wrist and (now - self.wrist_false_start) >= self.WRIST_OFF_DURATION:
-                    wrist_debounced = False
-                else:
-                    wrist_debounced = current_wrist
+                    self.wrist_true_start = None
+                    if self.wrist_false_start is None:
+                        self.wrist_false_start = now
+                    if current_wrist and (now - self.wrist_false_start) >= self.WRIST_OFF_DURATION:
+                        wrist_debounced = False
+                    else:
+                        wrist_debounced = current_wrist
 
-            if wrist_debounced != self.last_wrist_sent:
-                self.arduino.send_wrist_unbalanced(wrist_debounced)
-                self.last_wrist_sent = wrist_debounced
+                if wrist_debounced != self.last_wrist_sent:
+                    self.arduino.send_wrist_unbalanced(wrist_debounced)
+                    self.last_wrist_sent = wrist_debounced
 
             frame = annotated
 
