@@ -3,7 +3,7 @@ import queue
 import serial
 import threading
 
-import puredata_communication
+from puredata_comm import PureDataComm
 
 
 #Python controller that sends to arduino: [RESET], [SET_N_REPS], [SAVE_POSE], [QUIT], [WRIST_UNBALANCED], [KNEE_VALGUS]
@@ -23,6 +23,8 @@ class SerialController:
         self.left_pressure = [0, 0, 0]
         self.right_pressure = [0, 0, 0]
         self.write_queue = queue.Queue()
+
+        self.pd = PureDataComm(["127.0.0.1", 5005, "/motor"], [5006, "/filter"])
 
         self.read_thread = threading.Thread(target=self.read_loop, daemon=True)
         self.write_thread = threading.Thread(target=self.write_loop, daemon=True)
@@ -57,7 +59,7 @@ class SerialController:
         if msg.startswith("SQUATSTATE"):
             self.is_squatting = bool(int(msg.split(",")[1]))
             print(f"SQUATSTATE: {self.is_squatting}")
-            send_to_puredata("SQUATSTATE", self.is_squatting)
+            # send_to_puredata("SQUATSTATE", self.is_squatting)
 
         #TODO implement pressure data handling for UI
         elif msg.startswith("PRESSURE:"):
@@ -65,6 +67,8 @@ class SerialController:
             # left foot 3 sensors, right foot 3 sensors
             self.left_pressure = vals[:3]
             self.right_pressure = vals[3:]
+            self.pd.talk2pd("LB", self._heel_band(self.left_pressure[2]))
+            self.pd.talk2pd("RB", self._heel_band(self.right_pressure[2]))
 
         elif msg.startswith("REP_OK"):
             parts = msg.split(",")
@@ -74,12 +78,21 @@ class SerialController:
                 print(f"Rep {current}/{total}")
                 self.current_reps = current
                 self.rep_completed = True
-                send_to_puredata("rep_reward", 1)
+                self.pd.talk2pd("/rep", 1)
 
         elif msg == "SET_OK":
             self.set_completed = True
             print("Set completed")
-            send_to_puredata("set_reward", 1)
+            self.pd.talk2pd("/ser", 1)
+
+    @staticmethod
+    def _heel_band(value, vmax=1023):
+        pct = (value / vmax) * 100
+        if pct > 70:
+            return 255
+        if pct >= 40:
+            return 123
+        return 0
 
     # ----------------- Send to arduino -----------------
     def send(self, msg):
@@ -103,13 +116,15 @@ class SerialController:
 
     def send_wrist_unbalanced(self, unbalanced: bool):
         self.send(f"WRIST_UNBALANCED,{int(unbalanced)}")
-        # send signal to puredata
-        send_to_puredata("wrists", unbalanced)
+        value = 255 if unbalanced else 0
+        self.pd.talk2pd("/WR", value)
+        self.pd.talk2pd("/WL", value)
 
     def send_knee_valgus(self, valgus: bool):
         self.send(f"KNEE_VALGUS,{int(valgus)}")
-        #send signal to puredata
-        send_to_puredata("knees", valgus)
+        value = 255 if valgus else 0
+        self.pd.talk2pd("/KNL", value)
+        self.pd.talk2pd("/KNR", value)
 
     def send_startup_UI(self):
         self.send(f"INITIALIZE")

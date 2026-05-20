@@ -17,18 +17,19 @@ void setup(){
     Serial.begin(BAUD_RATE);
     while(!Serial);
 
-    //setup digital sensors  
+    // Specify the pin connected to each motor (motor1..motor8). Edit to match wiring.
+    const uint16_t my_motor_pins[NUM_MOTORS] = {5, 6, 7, 8, 9, 10, 11, 12};
+    setup_motors(my_motor_pins);
+
+    //setup digital sensors
     pinMode(digital_input0_pin, INPUT);
     pinMode(digital_input1_pin, INPUT);
     pinMode(digital_input2_pin, INPUT);
-    pinMode(digital_output2_pin, OUTPUT);
-    pinMode(digital_output3_pin, OUTPUT);
-    pinMode(digital_output4_pin, OUTPUT);
 
 
-    digitalWrite(digital_output2_pin, HIGH);
-    digitalWrite(digital_output3_pin, LOW);
-    digitalWrite(digital_output4_pin, LOW);
+    //setup digital outputs
+    // digitalWrite(digital_output2_pin, HIGH);
+    // digitalWrite(digital_output4_pin, LOW);
 
     //setup pressure sensors
 
@@ -61,10 +62,12 @@ void setup(){
 
 void loop(){
 
-    receive_message();
+    receive_message();   // parses motor1_pattern1 / LED1_pattern1 + squat commands
 
-    // readPressureSensors(14, 15, 16, "RIGHT");
+    readPressureSensors(14, 15, 16, "RIGHT");
     readPressureSensors(23, 22, 21, "LEFT");
 
-    analog_digital_loop();
+    analog_digital_loop();   // required for test_motor() to stream "a0, ..." (also runs IMU block — enable once bno_1/bno_2 are initialized)
+
+    test_motor();
 }

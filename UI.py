@@ -50,7 +50,7 @@ def barbell_bad_form(landmarks):
     #     return False
 
     LW, RW = 15, 16
-    return abs(landmarks[LW].y - landmarks[RW].y) > 0.03
+    return abs(landmarks[LW].y - landmarks[RW].y) > 0.05
 
 
 # ----------------- Qt Main Window -----------------
@@ -63,7 +63,7 @@ class SquatUI(QMainWindow):
         self.timestamp = 0
         self.arduino = arduino
         # ---- Camera ----
-        self.cam = cv2.VideoCapture(1)
+        self.cam = cv2.VideoCapture(2)
 
         # ---- MediaPipe ----
         base_options = python.BaseOptions(
@@ -149,7 +149,7 @@ class SquatUI(QMainWindow):
     def initializing(self):
         self.arduino.send_startup_UI()
         print("Initializing...")
-        self.statusBar().showMessage("Set your Squat pose and Repetitions")
+        self.statusBar().showMessage("Hold the squat-depth pose and press 'Save pose'.")
 
 
     # ---- Stop UI ----

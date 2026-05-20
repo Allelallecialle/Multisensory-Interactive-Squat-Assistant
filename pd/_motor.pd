@@ -1,0 +1,8 @@
+#N canvas 710 347 450 300 12;
+#X msg 132 101 r messageToFormat;
+#X obj 88 152 _format_serial_messages;
+#X obj 158 222 s to_arduino;
+#X obj 54 88 inlet;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 3 0 1 0;

@@ -49,13 +49,13 @@ void analog_digital_loop() {
             poseStableStart = 0;
             return;
           }
-        
+
         // Perform the user calibration pose. When the user is in the correct squat position, press the SPACE key to set the current pose angles
         if (!userPoseCalibrated) {
             setUserPose();
             return;
-          } 
-          
+          }
+
         // Call the function for the squat repetions check once we have the user pose reference
         if (userPoseCalibrated) {
             if (!setConfigured) {
@@ -331,13 +331,11 @@ void checkCorrectPoseAndReward() {
     return;   //wait until the number of desired reps are set
   }
 
-  float imu1[3], imu2[3];
-  readIMUAngles(imu1, imu2);
-
-  bool imu1_ok = checkPoseTolerance(imu1, refIMU1);
-  bool imu2_ok = checkPoseTolerance(imu2, refIMU2);
-
-  if ((imu1_ok && imu2_ok) && !repLocked) {
+  // Count a rep once the user has reached squat depth (isSquatting set by
+  // setSquatStateMediapipe — Y-axis hysteresis, robust to X/Z drift) and held
+  // it for POSE_STABLE_TIME. repLocked clears when they exit the squat so the
+  // next descent can count again.
+  if (isSquatting && !repLocked) {
 
     if (poseStableStart == 0) {
       poseStableStart = millis();
@@ -345,20 +343,18 @@ void checkCorrectPoseAndReward() {
 
     if (millis() - poseStableStart >= POSE_STABLE_TIME) {
       squat_counter++;
-      repLocked = true;   // lock user pose until exits it
+      repLocked = true;
 
-      // trigger reward sound from puredata -> 1 squat repetition correctly done
-      Serial.print("REP_OK,");    // Message to send to python
+      Serial.print("REP_OK,");
       Serial.print(squat_counter);
       Serial.print(",");
       Serial.println(repetitions_to_achieve);
 
       if (squat_counter >= repetitions_to_achieve) {
 
-        // trigger another puredata reward sound for end of squat set
-        Serial.println("SET_OK");   // Message to send to python
+        Serial.println("SET_OK");
 
-        setConfigured = false;   // allow new set
+        setConfigured = false;
         squat_counter = 0;
         repLocked = false;
         poseStableStart = 0;
@@ -368,7 +364,7 @@ void checkCorrectPoseAndReward() {
       poseStableStart = 0;
     }
 
-  } else {
+  } else if (!isSquatting) {
     poseStableStart = 0;
     repLocked = false;
   }
@@ -425,13 +421,16 @@ void setUserPose() {
   }
 }
 
-// function to detect if the user is squatting 
+// Reference = the squat-depth pose captured in setUserPose(). The user is
+// "squatting" when their current Y angles are CLOSE to that reference on both
+// IMUs. Hysteresis: enter at small delta (SQUAT_EXIT_THRESHOLD), exit only
+// after moving clearly away (SQUAT_ANGLE_THRESHOLD).
 bool detectSquatFromIMUs(float imu1[3], float imu2[3]) {
   float delta1 = abs(imu1[1] - refIMU1[1]); // Y plane
   float delta2 = abs(imu2[1] - refIMU2[1]);
 
-  return (delta1 > SQUAT_ANGLE_THRESHOLD ||
-          delta2 > SQUAT_ANGLE_THRESHOLD);
+  return (delta1 < SQUAT_EXIT_THRESHOLD &&
+          delta2 < SQUAT_EXIT_THRESHOLD);
 }
 
 // function to call in the loop() that sets the bool to send to mediapipe
@@ -455,8 +454,10 @@ void setSquatStateMediapipe(){
     float delta1 = abs(imu1[1] - refIMU1[1]);
     float delta2 = abs(imu2[1] - refIMU2[1]);
 
-    if (delta1 < SQUAT_EXIT_THRESHOLD &&
-        delta2 < SQUAT_EXIT_THRESHOLD) {
+    // Exit once the user has clearly moved away from the squat-depth pose
+    // on either IMU (hysteresis vs. the enter threshold above).
+    if (delta1 > SQUAT_ANGLE_THRESHOLD ||
+        delta2 > SQUAT_ANGLE_THRESHOLD) {
 
       isSquatting = false;
       squatStateStart = 0;
@@ -645,4 +646,45 @@ void handle_received_message(char *received_message) {
     return;
   }
 
-} 
+  // Dispatch motorN_pattern1 (N = 1..NUM_MOTORS) to motor_pins[N-1].
+  if (strncmp(all_tokens[0], "motor", 5) == 0 && all_tokens[1] != NULL) {
+    char *end_num;
+    long n = strtol(all_tokens[0] + 5, &end_num, 10);
+    if (end_num > all_tokens[0] + 5 && n >= 1 && n <= NUM_MOTORS &&
+        strcmp(end_num, "_pattern1") == 0) {
+      analogWrite(motor_pins[n - 1], atoi(all_tokens[1]));
+      return;
+    }
+  }
+
+  if (strcmp(all_tokens[0], "LED1_pattern1") == 0 && all_tokens[1] != NULL) {
+    analogWrite(digital_output4_pin, atoi(all_tokens[1]));
+    return;
+  }
+
+}
+
+// Copies the caller's pin array into motor_pins and initializes each pin
+// as OUTPUT LOW. Call once from main.cpp setup().
+void setup_motors(const uint16_t pins[NUM_MOTORS]) {
+  for (int i = 0; i < NUM_MOTORS; i++) {
+    motor_pins[i] = pins[i];
+    pinMode(motor_pins[i], OUTPUT);
+    digitalWrite(motor_pins[i], LOW);
+  }
+}
+
+// Replicates the serial-streaming behavior of test_motor.cpp.
+// The motor/LED commands (motor1_pattern1, LED1_pattern1) and the
+// analog read+filter are already handled by receive_message() /
+// handle_received_message() and analog_digital_loop() respectively,
+// which are called from main.cpp loop(). This function only adds the
+// "print a0 over serial when its filtered value changes" piece that
+// the standalone sketch was doing.
+void test_motor() {
+  if (analog_input0_lp_filtered != previous_analog_input0_lp_filtered) {
+    Serial.print("a0, ");
+    Serial.println(analog_input0_lp_filtered);
+    previous_analog_input0_lp_filtered = analog_input0_lp_filtered;
+  }
+}

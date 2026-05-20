@@ -49,12 +49,16 @@ extern int digital_input2_last_button_state;
 
 extern const uint16_t digital_output0_pin;
 extern const uint16_t digital_output1_pin;
-extern const uint16_t digital_output2_pin;
-extern const uint16_t digital_output3_pin;
-extern const uint16_t digital_output4_pin;
-extern int digital_output0_LED_state;
-extern int digital_output1_LED_state;
-extern int digital_output2_LED_state;
+// extern const uint16_t digital_output2_pin;
+// extern const uint16_t digital_output3_pin;
+// extern const uint16_t digital_output4_pin;
+// motor_pins[N-1] drives the motorN_pattern1 command (N = 1..NUM_MOTORS).
+// Populated by setup_motors() from main.cpp.
+#define NUM_MOTORS 8
+extern uint16_t motor_pins[NUM_MOTORS];
+// extern int digital_output0_LED_state;
+// extern int digital_output1_LED_state;
+// extern int digital_output2_LED_state;
 
 
 extern unsigned long digital_input0_last_debounce_time;  
