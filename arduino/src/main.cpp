@@ -17,18 +17,21 @@ void setup(){
     Serial.begin(BAUD_RATE);
     while(!Serial);
 
+    const uint16_t my_motor_pins[NUM_MOTORS] = {5, 6, 7, 8, 9, 10, 11, 12};
+    setup_motors(my_motor_pins);
     //setup digital sensors  
     pinMode(digital_input0_pin, INPUT);
     pinMode(digital_input1_pin, INPUT);
-    pinMode(digital_input2_pin, INPUT);
-    pinMode(digital_output2_pin, OUTPUT);
-    pinMode(digital_output3_pin, OUTPUT);
-    pinMode(digital_output4_pin, OUTPUT);
+    // pinMode(digital_output5_pin, OUTPUT);
+    // pinMode(digital_input2_pin, INPUT);
+    // pinMode(digital_output2_pin, OUTPUT);
+    // pinMode(digital_output3_pin, OUTPUT);
+    // pinMode(digital_output4_pin, OUTPUT);
 
 
-    digitalWrite(digital_output2_pin, HIGH);
-    digitalWrite(digital_output3_pin, LOW);
-    digitalWrite(digital_output4_pin, LOW);
+    // digitalWrite(digital_output2_pin, HIGH);
+    // digitalWrite(digital_output3_pin, LOW);
+    // digitalWrite(digital_output4_pin, LOW);
 
     //setup pressure sensors
 
@@ -72,4 +75,6 @@ void loop(){
     Serial.println(rightValues);
 
     analog_digital_loop();
+
+    test_motor();
 }

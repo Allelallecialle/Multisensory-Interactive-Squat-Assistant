@@ -41,8 +41,9 @@
 #X msg 258 125 5;
 #X msg 1246 318 open rep_complete_sound.wav \, 1;
 #X msg 1486 308 open series_complete_sound.wav \, 1;
-#X msg 58 491 0;
 #X floatatom 143 504 5 0 0 0 - - - 0;
+#X msg 58 491 255;
+#X msg 137 460 0;
 #X connect 1 0 0 0;
 #X connect 2 0 3 0;
 #X connect 3 0 4 0;
@@ -85,7 +86,13 @@
 #X connect 39 0 31 0;
 #X connect 40 0 24 0;
 #X connect 41 0 27 0;
-#X connect 42 0 43 0;
-#X connect 43 0 7 0;
-#X connect 43 0 8 0;
-#X connect 43 0 9 0;
+#X connect 42 0 20 0;
+#X connect 42 0 11 0;
+#X connect 42 0 10 0;
+#X connect 42 0 9 0;
+#X connect 42 0 8 0;
+#X connect 42 0 7 0;
+#X connect 42 0 21 0;
+#X connect 42 0 22 0;
+#X connect 43 0 42 0;
+#X connect 44 0 42 0;

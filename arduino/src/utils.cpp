@@ -689,4 +689,39 @@ void handle_received_message(char *received_message) {
     return;
   }
 
+  // Dispatch motorN_pattern1 (N = 1..NUM_MOTORS) to motor_pins[N-1].
+  if (strncmp(all_tokens[0], "motor", 5) == 0 && all_tokens[1] != NULL) {
+    char *end_num;
+    long n = strtol(all_tokens[0] + 5, &end_num, 10);
+    if (end_num > all_tokens[0] + 5 && n >= 1 && n <= NUM_MOTORS &&
+        strcmp(end_num, "_pattern1") == 0) {
+      analogWrite(motor_pins[n - 1], atoi(all_tokens[1]));
+      return;
+    }
+  }
+
 } 
+// Copies the caller's pin array into motor_pins and initializes each pin
+// as OUTPUT LOW. Call once from main.cpp setup().
+void setup_motors(const uint16_t pins[NUM_MOTORS]) {
+  for (int i = 0; i < NUM_MOTORS; i++) {
+    motor_pins[i] = pins[i];
+    pinMode(motor_pins[i], OUTPUT);
+    digitalWrite(motor_pins[i], LOW);
+  }
+}
+
+// Replicates the serial-streaming behavior of test_motor.cpp.
+// The motor/LED commands (motor1_pattern1, LED1_pattern1) and the
+// analog read+filter are already handled by receive_message() /
+// handle_received_message() and analog_digital_loop() respectively,
+// which are called from main.cpp loop(). This function only adds the
+// "print a0 over serial when its filtered value changes" piece that
+// the standalone sketch was doing.
+void test_motor() {
+  if (analog_input0_lp_filtered != previous_analog_input0_lp_filtered) {
+    Serial.print("a0, ");
+    Serial.println(analog_input0_lp_filtered);
+    previous_analog_input0_lp_filtered = analog_input0_lp_filtered;
+  }
+}

@@ -3,6 +3,7 @@ import queue
 import serial
 import threading
 
+from puredata_comm import PureDataComm
 import puredata_communication
 
 
@@ -23,6 +24,7 @@ class SerialController:
         self.left_pressure = [0, 0, 0]
         self.right_pressure = [0, 0, 0]
         self.write_queue = queue.Queue()
+        self.pd = PureDataComm(["127.0.0.1", 5005, "/motor"], [5006, "/filter"])
 
         self.read_thread = threading.Thread(target=self.read_loop, daemon=True)
         self.write_thread = threading.Thread(target=self.write_loop, daemon=True)
@@ -73,12 +75,12 @@ class SerialController:
                 print(f"Rep {current}/{total}")
                 self.current_reps = current
                 self.rep_completed = True
-                #send_to_puredata("rep_reward", 1)
+                self.pd.talk2pd("/rep", 1)
 
         elif msg == "SET_OK":
             self.set_completed = True
             print("Set completed")
-            #send_to_puredata("set_reward", 1)
+            self.pd.talk2pd("/ser", 1)
 
     # ----------------- Send to arduino -----------------
     def send(self, msg):
@@ -104,11 +106,17 @@ class SerialController:
         self.send(f"WRIST_UNBALANCED,{int(unbalanced)}")
         # send signal to puredata
         #send_to_puredata("wrists", unbalanced)
+        # value=123 if unbalanced else 0
+        # self.pd.talk2pd("WR", value)
+        # self.pd.talk2pd("WL", value)
 
     def send_knee_valgus(self, valgus: bool):
         self.send(f"KNEE_VALGUS,{int(valgus)}")
         #send signal to puredata
         #send_to_puredata("knees", valgus)
+        value=123 if valgus else 0
+        self.pd.talk2pd("KNR", value)
+        # self.pd.talk2pd("KNL", value)
 
     def send_startup_UI(self):
         self.send(f"INITIALIZE")

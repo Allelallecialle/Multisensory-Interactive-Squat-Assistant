@@ -17,13 +17,16 @@ int digital_input2_last_button_state = LOW;
 
 const uint16_t digital_output0_pin = 3; 
 const uint16_t digital_output1_pin = 4; 
-const uint16_t digital_output2_pin = 5; 
-const uint16_t digital_output3_pin = 9; 
-const uint16_t digital_output4_pin = 10; 
+// const uint16_t digital_output2_pin = 5; 
+// const uint16_t digital_output3_pin = 9; 
+// const uint16_t digital_output4_pin = 10; 
 
-int digital_output0_LED_state = HIGH;
-int digital_output1_LED_state = HIGH;
-int digital_output2_LED_state = HIGH;
+// Pins driving the vibration motors for motorN_pattern1 commands.
+// Defaults are placeholders; real values are assigned by setup_motors() in main.cpp.
+uint16_t motor_pins[NUM_MOTORS] = {0};
+// int digital_output0_LED_state = HIGH;
+// int digital_output1_LED_state = HIGH;
+// int digital_output2_LED_state = HIGH;
 
 
 unsigned long digital_input0_last_debounce_time = 0;  
