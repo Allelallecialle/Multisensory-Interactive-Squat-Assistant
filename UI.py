@@ -102,11 +102,14 @@ class SquatUI(QMainWindow):
 
         # cached last-sent values — only send on transition to avoid flooding Arduino serial
         self.last_valgus_sent = None
-        # self.last_wrist_sent = None
+        self.last_wrist_sent = None
         # timestamp when valgus first became True in the current run; None when not in valgus
         self.valgus_true_start = None
-        # require valgus to be held this long before signalling, to ignore brief flickers
-        self.VALGUS_MIN_DURATION = 0.5  # seconds
+        # asymmetric debounce timers for the wrist signal
+        self.wrist_true_start = None   # set while raw unbalanced is True
+        self.wrist_false_start = None  # set while raw unbalanced is False
+        self.WRIST_MIN_DURATION = 0.5  # seconds (off to on)
+        self.WRIST_OFF_DURATION = 0.3  # seconds (on to off)
         
         controls = QVBoxLayout()
         controls.addStretch()
@@ -249,36 +252,50 @@ class SquatUI(QMainWindow):
             annotated = draw_landmarks_on_image(frame.copy(), result)
 
             #check valgus knees only if the arduino sends that the user is actually squatting
-            if self.arduino.is_squatting:
+            # if self.arduino.is_squatting:
                 #print("squatting")
-                valgus = check_knee_valgus(landmarks, w, h)
-                if valgus:
-                    overlay = annotated.copy()
-                    overlay[:] = (0, 0, 255)
-                    annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
-                    cv2.putText(
-                        annotated, "KNEE VALGUS", (30, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                    )
-                    # self.arduino.send_knee_valgus(valgus)
-
-                unbalanced_wrists = barbell_bad_form(landmarks)
-                if unbalanced_wrists:
-                    cv2.putText(
-                        annotated, "BARBELL OUT OF BALANCE", (30, 80),
-                        cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
-                    )
-                #send serial boolean for barbell balance: 1 if unbalanced, 0 balanced
-                # self.arduino.send_wrist_unbalanced(unbalanced_wrists)
-                # # send serial boolean for valgus knees: 1 if valgus, 0 ok
+            valgus = check_knee_valgus(landmarks, w, h)
+            if valgus:
+                overlay = annotated.copy()
+                overlay[:] = (0, 0, 255)
+                annotated = cv2.addWeighted(annotated, 0.6, overlay, 0.4, 0)
+                cv2.putText(
+                    annotated, "KNEE VALGUS", (30, 40),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                )
                 # self.arduino.send_knee_valgus(valgus)
-                # send only on state transitions to avoid flooding the Arduino serial buffer                                                                                      
-                # if unbalanced_wrists != self.last_wrist_sent:                                                                                                              
-                #     self.arduino.send_wrist_unbalanced(unbalanced_wrists)                                                                                                  
-                #     self.last_wrist_sent = unbalanced_wrists                                                                                                               
-                if valgus != self.last_valgus_sent:                                                                                                                        
-                    self.arduino.send_knee_valgus(valgus)                                                                                                                  
-                    self.last_valgus_sent = valgus   
+
+            unbalanced_wrists = barbell_bad_form(landmarks)
+            if unbalanced_wrists:
+                cv2.putText(
+                    annotated, "BARBELL OUT OF BALANCE", (30, 80),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
+                )
+            # asymmetric debounce: raw unbalanced must be held True for
+            # >= WRIST_MIN_DURATION before we send True, and held False for
+            # >= WRIST_OFF_DURATION before we send False.
+            now = time.time()
+            current_wrist = bool(self.last_wrist_sent)
+            if unbalanced_wrists:
+                self.wrist_false_start = None
+                if self.wrist_true_start is None:
+                    self.wrist_true_start = now
+                if not current_wrist and (now - self.wrist_true_start) >= self.WRIST_MIN_DURATION:
+                    wrist_debounced = True
+                else:
+                    wrist_debounced = current_wrist
+            else:
+                self.wrist_true_start = None
+                if self.wrist_false_start is None:
+                    self.wrist_false_start = now
+                if current_wrist and (now - self.wrist_false_start) >= self.WRIST_OFF_DURATION:
+                    wrist_debounced = False
+                else:
+                    wrist_debounced = current_wrist
+
+            if wrist_debounced != self.last_wrist_sent:
+                self.arduino.send_wrist_unbalanced(wrist_debounced)
+                self.last_wrist_sent = wrist_debounced
 
             frame = annotated
 

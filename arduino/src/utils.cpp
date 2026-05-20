@@ -62,7 +62,7 @@ void analog_digital_loop() {
             if (!setConfigured) {
             squatSeriesCounter();
             } else {
-            setSquatStateMediapipe();
+            // setSquatStateMediapipe();
             checkCorrectPoseAndReward();
             }
           }
@@ -316,7 +316,7 @@ bool checkPoseTolerance(float curr[3], float ref[3]) {
 }
 
 // function to check squat repetitions. Use the above functions defined
-void checkCorrectPoseAndReward() {
+void checkCorrectPoseAndReward_old() {
   if (lastCommand == CMD_QUIT) {
     lastCommand = CMD_NONE;
 
@@ -394,6 +394,65 @@ void squatSeriesCounter() {
       Serial.println(setConfigured);
       Serial.println("Repetitions desired saved on arduino");
     }
+  }
+}
+// function to check squat repetitions. Use the above functions defined
+void checkCorrectPoseAndReward() {
+  if (lastCommand == CMD_QUIT) {
+    lastCommand = CMD_NONE;
+
+    setConfigured = false;
+    squat_counter = 0;
+    repLocked = false;
+    poseStableStart = 0;
+
+    return;
+  }
+
+  if (!setConfigured) {
+    return;   //wait until the number of desired reps are set
+  }
+
+  float imu1[3], imu2[3];
+  readIMUAngles(imu1, imu2);
+
+  bool imu1_ok = checkPoseTolerance(imu1, refIMU1);
+  bool imu2_ok = checkPoseTolerance(imu2, refIMU2);
+
+  if ((imu1_ok && imu2_ok) && !repLocked) {
+
+    if (poseStableStart == 0) {
+      poseStableStart = millis();
+    }
+
+    if (millis() - poseStableStart >= POSE_STABLE_TIME) {
+      squat_counter++;
+      repLocked = true;   // lock user pose until exits it
+
+      // trigger reward sound from puredata -> 1 squat repetition correctly done
+      Serial.print("REP_OK,");    // Message to send to python
+      Serial.print(squat_counter);
+      Serial.print(",");
+      Serial.println(repetitions_to_achieve);
+
+      if (squat_counter >= repetitions_to_achieve) {
+
+        // trigger another puredata reward sound for end of squat set
+        Serial.println("SET_OK");   // Message to send to python
+
+        setConfigured = false;   // allow new set
+        squat_counter = 0;
+        repLocked = false;
+        poseStableStart = 0;
+        return;
+      }
+
+      poseStableStart = 0;
+    }
+
+  } else if (!imu1_ok || !imu2_ok) {
+    poseStableStart = 0;
+    repLocked = false;
   }
 }
 

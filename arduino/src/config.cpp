@@ -87,7 +87,7 @@ int squat_counter = 0;
 
 unsigned long poseStableStart = 0;
 const unsigned long POSE_STABLE_TIME = 500; // ms required to maintain the concentric correct pose -> then trigger puredata reward sound
-const float ANGLE_TOLERANCE = 15.0;           // degrees of tolerance of current squat pose from the calibrated one
+const float ANGLE_TOLERANCE = 25.0;           // degrees of tolerance of current squat pose from the calibrated one
 
 boolean new_message_received = false;
 char received_message[64];

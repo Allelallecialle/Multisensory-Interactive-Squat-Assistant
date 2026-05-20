@@ -23,6 +23,8 @@ class SerialController:
         self.total_reps = 0
         self.left_pressure = [0, 0, 0]
         self.right_pressure = [0, 0, 0]
+        # gate wrist-to-PD output: only forward after the first REP_OK of a set
+        self.wrists_pd_active = False
         self.write_queue = queue.Queue()
         self.pd = PureDataComm(["127.0.0.1", 5005, "/motor"], [5006, "/filter"])
 
@@ -75,10 +77,12 @@ class SerialController:
                 print(f"Rep {current}/{total}")
                 self.current_reps = current
                 self.rep_completed = True
+                self.wrists_pd_active = True
                 self.pd.talk2pd("/rep", 1)
 
         elif msg == "SET_OK":
             self.set_completed = True
+            self.wrists_pd_active = False
             print("Set completed")
             self.pd.talk2pd("/ser", 1)
 
@@ -93,6 +97,7 @@ class SerialController:
         self.set_completed = False
         self.current_reps = 0
         self.total_reps = 0
+        self.wrists_pd_active = False
         self.send("QUIT")
 
     def set_reps(self, n):
@@ -104,19 +109,14 @@ class SerialController:
 
     def send_wrist_unbalanced(self, unbalanced: bool):
         self.send(f"WRIST_UNBALANCED,{int(unbalanced)}")
-        # send signal to puredata
-        #send_to_puredata("wrists", unbalanced)
-        # value=123 if unbalanced else 0
-        # self.pd.talk2pd("WR", value)
-        # self.pd.talk2pd("WL", value)
+        # only forward to PureData once the first rep of the set has been confirmed
+        if self.wrists_pd_active:
+            value = 255 if unbalanced else 0
+            self.pd.talk2pd("/KN", value)
 
     def send_knee_valgus(self, valgus: bool):
         self.send(f"KNEE_VALGUS,{int(valgus)}")
-        #send signal to puredata
-        #send_to_puredata("knees", valgus)
-        value=255 if valgus else 1
-        self.pd.talk2pd("/KN", value)
-        # self.pd.talk2pd("KNL", value)
+        # PureData trigger for valgus disabled — wrists only for now
 
     def send_startup_UI(self):
         self.send(f"INITIALIZE")
