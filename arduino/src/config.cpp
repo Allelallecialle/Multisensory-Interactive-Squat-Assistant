@@ -81,10 +81,13 @@ bool repLocked = false;   // to avoid double rep counting
 bool isSquatting = false;
 int repetitions_to_achieve = 0;
 int squat_counter = 0;
+bool previousState = false;
+unsigned long lastMovementTime = 0;
 
 unsigned long poseStableStart = 0;
-const unsigned long POSE_STABLE_TIME = 2000; // ms required to maintain the concentric correct pose -> then trigger puredata reward sound
-const float ANGLE_TOLERANCE = 6.0;           // degrees of tolerance of current squat pose from the calibrated one
+const unsigned long POSE_STABLE_TIME = 1000; // ms required to maintain the concentric correct pose -> then trigger puredata reward sound
+const float ANGLE_TOLERANCE = 15.0;           // degrees of tolerance of current squat pose from the calibrated one
+const float MOVEMENT_THRESHOLD = 0.8;
 
 boolean new_message_received = false;
 char received_message[64];

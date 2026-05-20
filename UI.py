@@ -50,7 +50,7 @@ def barbell_bad_form(landmarks):
     #     return False
 
     LW, RW = 15, 16
-    return abs(landmarks[LW].y - landmarks[RW].y) > 0.03
+    return abs(landmarks[LW].y - landmarks[RW].y) > 0.05
 
 
 # ----------------- Qt Main Window -----------------

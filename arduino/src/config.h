@@ -118,11 +118,14 @@ extern float refIMU2[3];
 extern unsigned long poseStableStart;
 extern const unsigned long POSE_STABLE_TIME; // ms required to maintain the concentric correct pose -> then trigger puredata reward sound
 extern const float ANGLE_TOLERANCE;           // degrees of tolerance of current squat pose from the calibrated one
+extern const float MOVEMENT_THRESHOLD;
 extern UserCommand lastCommand;
 extern int lastNumber;
 extern boolean new_message_received;
 constexpr byte MAX_LENGTH_MESSAGE = 64;
 extern char received_message[MAX_LENGTH_MESSAGE];
+extern bool previousState;
+extern unsigned long lastMovementTime;
 
 //IMU
 /* Set the delay between fresh samples */
