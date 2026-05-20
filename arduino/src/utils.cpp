@@ -689,15 +689,33 @@ void handle_received_message(char *received_message) {
     return;
   }
 
-  // Dispatch motorN_pattern1 (N = 1..NUM_MOTORS) to motor_pins[N-1].
-  if (strncmp(all_tokens[0], "motor", 5) == 0 && all_tokens[1] != NULL) {
-    char *end_num;
-    long n = strtol(all_tokens[0] + 5, &end_num, 10);
-    if (end_num > all_tokens[0] + 5 && n >= 1 && n <= NUM_MOTORS &&
-        strcmp(end_num, "_pattern1") == 0) {
-      analogWrite(motor_pins[n - 1], atoi(all_tokens[1]));
-      return;
-    }
+  // // Dispatch motorN_pattern1 (N = 1..NUM_MOTORS) to motor_pins[N-1].
+  // if (strncmp(all_tokens[0], "motor", 5) == 0 && all_tokens[1] != NULL) {
+  //   char *end_num;
+  //   long n = strtol(all_tokens[0] + 5, &end_num, 10);
+  //   if (end_num > all_tokens[0] + 5 && n >= 1 && n <= NUM_MOTORS &&
+  //       strcmp(end_num, "_pattern1") == 0) {
+  //     analogWrite(motor_pins[n - 1], atoi(all_tokens[1]));
+  //     return;
+  //   }
+  // }
+
+  char *command = all_tokens[0]; 
+  char *value = all_tokens[1];
+
+
+  if (strcmp(command,"motor1_pattern1") == 0) {
+
+    /*
+    Serial.print("activating message 1: ");
+    Serial.print(command);
+    Serial.print(" ");
+    Serial.print(value);
+    Serial.println(" ");
+    */
+    
+    analogWrite(digital_output3_pin, atoi(value));
+    
   }
 
 } 

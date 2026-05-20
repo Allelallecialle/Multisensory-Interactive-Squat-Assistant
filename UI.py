@@ -100,6 +100,14 @@ class SquatUI(QMainWindow):
         self.reps_spin.setRange(1, 20)
         self.reps_spin.setValue(10)
 
+        # cached last-sent values — only send on transition to avoid flooding Arduino serial
+        self.last_valgus_sent = None
+        # self.last_wrist_sent = None
+        # timestamp when valgus first became True in the current run; None when not in valgus
+        self.valgus_true_start = None
+        # require valgus to be held this long before signalling, to ignore brief flickers
+        self.VALGUS_MIN_DURATION = 0.5  # seconds
+        
         controls = QVBoxLayout()
         controls.addStretch()
         controls.addWidget(self.save_btn)
@@ -252,6 +260,7 @@ class SquatUI(QMainWindow):
                         annotated, "KNEE VALGUS", (30, 40),
                         cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2
                     )
+                    # self.arduino.send_knee_valgus(valgus)
 
                 unbalanced_wrists = barbell_bad_form(landmarks)
                 if unbalanced_wrists:
@@ -263,6 +272,13 @@ class SquatUI(QMainWindow):
                 # self.arduino.send_wrist_unbalanced(unbalanced_wrists)
                 # # send serial boolean for valgus knees: 1 if valgus, 0 ok
                 # self.arduino.send_knee_valgus(valgus)
+                # send only on state transitions to avoid flooding the Arduino serial buffer                                                                                      
+                # if unbalanced_wrists != self.last_wrist_sent:                                                                                                              
+                #     self.arduino.send_wrist_unbalanced(unbalanced_wrists)                                                                                                  
+                #     self.last_wrist_sent = unbalanced_wrists                                                                                                               
+                if valgus != self.last_valgus_sent:                                                                                                                        
+                    self.arduino.send_knee_valgus(valgus)                                                                                                                  
+                    self.last_valgus_sent = valgus   
 
             frame = annotated
 

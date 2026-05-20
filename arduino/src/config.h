@@ -50,7 +50,7 @@ extern int digital_input2_last_button_state;
 extern const uint16_t digital_output0_pin;
 extern const uint16_t digital_output1_pin;
 // extern const uint16_t digital_output2_pin;
-// extern const uint16_t digital_output3_pin;
+extern const uint16_t digital_output3_pin;
 // extern const uint16_t digital_output4_pin;
 // extern int digital_output0_LED_state;
 // extern int digital_output1_LED_state;

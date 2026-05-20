@@ -18,7 +18,7 @@ int digital_input2_last_button_state = LOW;
 const uint16_t digital_output0_pin = 3; 
 const uint16_t digital_output1_pin = 4; 
 // const uint16_t digital_output2_pin = 5; 
-// const uint16_t digital_output3_pin = 9; 
+const uint16_t digital_output3_pin = 10; 
 // const uint16_t digital_output4_pin = 10; 
 
 // Pins driving the vibration motors for motorN_pattern1 commands.

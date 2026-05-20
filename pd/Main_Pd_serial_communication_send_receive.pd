@@ -128,8 +128,8 @@
 #X msg 1446 1233 open rep_complete_sound.wav;
 #X obj 213 860 print;
 #X obj 47 911 route list;
-#X obj 150 965 route motor1;
 #X obj 1513 1196 bng 18 250 50 0 empty empty empty 0 -9 0 10 #fcfcfc #000000 #000000;
+#X obj 150 965 route KN;
 #X connect 0 0 115 0;
 #X connect 1 0 115 0;
 #X connect 2 0 3 0;
@@ -228,7 +228,7 @@
 #X connect 123 0 124 1;
 #X connect 125 0 123 0;
 #X connect 126 0 123 0;
-#X connect 128 0 129 0;
-#X connect 129 0 122 0;
-#X connect 129 0 105 0;
-#X connect 130 0 126 0;
+#X connect 128 0 130 0;
+#X connect 129 0 126 0;
+#X connect 130 0 122 0;
+#X connect 130 0 105 0;
