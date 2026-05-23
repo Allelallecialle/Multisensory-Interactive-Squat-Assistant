@@ -53,7 +53,7 @@ void analog_digital_loop() {
         // Perform the user calibration pose. When the user is in the correct squat position, press the SPACE key to set the current pose angles
         if (!userPoseCalibrated) {
             setUserPose();
-            delay(2000);
+            delay(500);
             return;
           } 
           
