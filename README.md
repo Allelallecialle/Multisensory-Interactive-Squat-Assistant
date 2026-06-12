@@ -12,6 +12,8 @@ It analyzes body posture adapting to the user, detects repetitions, and provides
 - Automatized repetitions count
 - Python-Arduino communication with serial port
 
+Watch our project [Video](https://youtube.com/shorts/NGG2p5JY0Q4?si=znIQmEGVZxoxY3G-)!
+
 ## Materials and Components
 **Hardware**: Teensy or Arduino, webcam or external camera, 2 IMUs, 6 pressure sensors, 8 vibration motors. 
 
